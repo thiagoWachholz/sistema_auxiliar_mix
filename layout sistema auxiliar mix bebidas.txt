@@ -1,0 +1,116 @@
+layout sistema auxiliar mix bebidas
+
+janela 1 - Tela de Login
+	- input código
+	- input senha
+	- button entrar
+
+janela 2 - Menu principal
+	- menu superior
+		- conexão banco de dados
+		- Usuários
+			- Adicionar
+			- Remover
+	- Eventos
+	- Produtos *
+
+janela 3 - Conexão com o banco de dados
+	- Label caminho atual
+	- label novo caminho - input novo caminho
+	- Button novo caminho -> seleciona o diretório de onde está o novo caminho
+	- Button trocar caminho -> informa se houve conexão
+	- Button testar conexão com caminho atual -> informa se houve conexão
+
+janela 4 - Adicionar usuário
+	- Label código
+	- label nome do usuário - input nome do usuário
+	- label senha - input senha
+	- label confirmar senha - input confirmação de senha
+	- button confirmar
+
+janela 5 - Remover usuário
+	- table com usuários
+		- código
+		- nome de usuário
+	- button remover -> ao tentar remover o usuário, será solicitada sua senha ou senha geral do sistema
+
+janela 6 - Eventos
+	- cadastros
+		- entregadores
+		- locais de festa
+		- tipos de festa
+	- relatórios
+		- relatório produtos por data
+		- relatório produtos por tipo de festa
+		- relatório produtos mais consumidos
+		- relatório consumo por quantidade de pessoas
+	- Label titulo eventos confirmados
+	- input n orçamento - checkbox filtrar - input data - checkbox filtrar - input local - checkbox filtrar - input nome - checkbox filtrar
+	- combobox estado - checkbox filtrar
+	- table eventos confirmados
+		- n orçamento
+		- data
+		- local
+		- nome
+		- estado
+	- button consultar festa - button adicionar festa - button remover festa - button imprimir evento
+	- button impressões
+
+janela 7 - consultar festa
+	- label n° orçamento
+	- label nome cliente - label contato cliente
+	- label data - input data - label local - input cod local - checkbox - input local
+	- label estado atual - button confirmado - button entregue - button recolhido
+	- label tipo de festa - input cod tipo festa - checkbox - input tipo festa - label quantidade de pessoas - input quantidade de pessoas - label alcoólicos - input alcoólicos
+	- table produtos
+		- código
+		- nome
+		- referencia
+		- quantidade
+		- valor unitário
+		- valor total
+	- button adicionar produto - button remover produto
+	- label valor total dos produtos
+	- input consumo - button consumo - input locação - button locação - input avaria - button avaria
+	- label valor consumo - label valor locação - label valor avaria - label valor total final
+	- label entregador - input cod entregador - checkbox - input entregador
+	- label recolhedor - input cod recolhedor - checkbox - input recolhedor
+	- button confirmar - button sair
+
+janela 8 - adicionar festa
+	- label titulo adicionar festa
+	- label n° orçamento - input n orçamento - button pesquisar - button novo
+	- label nome cliente - label contato cliente
+	- label data - input data - label local - input cod local - checkbox - input local
+	- label tipo de festa - input cod tipo festa - checkbox - input tipo festa - label quantidade de pessoas - input quantidade de pessoas - label alcoólicos - input alcoólicos
+	- label observação 1
+	- textarea observação 1
+	- label observação 1
+	- textarea observação 1
+	- button confirmar - button sair
+
+janela 9 - imprimir evento
+	- label titulo imprimir evento
+	- label n° orçamento - input n orçamento - checkbox consignado
+	- label data - input data - label local - input cod local - checkbox - input local
+	- label tipo de festa - input cod tipo festa - checkbox - input tipo festa - label quantidade de pessoas - input quantidade de pessoas - label alcoólicos - input alcoólicos
+	- button imprimir - button sair
+	- table eventos impressos
+		dados eventos impressos
+	- button imprimir - button sair
+
+janela 10 - cadastros
+	- label titulo
+	- table cadastros
+		- código
+		- nome
+	- button remover
+	- input nome - button adicionar
+
+janela 11 - Produtos
+	- label Produtos
+	- table produtos
+		- código
+		- nome + referencia
+		- categoria
+	- button adicionar imagem -> mensagem de confirmação para imagem - button ver imagem

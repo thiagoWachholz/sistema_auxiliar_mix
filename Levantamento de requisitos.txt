@@ -1,0 +1,94 @@
+levantamento de requisitos para um sistema auxiliar mix bebidas
+
+requisitos não funcionais
+- arquivo json armazenando o caminho do banco de dados
+- conexão com o banco de dados do sistema MC Sistemas Mix Bebidas
+- criação de novo banco de dados
+	- Usuários
+		- Codigo
+		- Senha
+		- Nome
+		- Telefone
+	- Tipos de festa
+		- Código
+		- Nome
+	- Entregadores
+		- Codigo
+		- Nome
+	- Locais de festa
+		- Código
+		- Local
+		- Endereço
+		- Contato
+	- Produtos
+		- Código
+		- Categoria
+		- Imagem
+	- Festas
+		- n° orçamento primary key
+		- data da festa date
+		- local da festa varchar(55)
+		- tipo de festa
+		- quantidade de pessoas
+		- alcoolicos
+	- Festas confirmadas
+		- n° orçamento primary key
+		- Estado
+		- Consumo
+		- Locação
+		- Avaria
+		- Chave NFE1
+		- Chave NFE2
+		- Chave NFSE1
+		- Chave NFSE2
+
+requisitos funcionais
+- tabela de festas confirmadas
+	- nome do cliente
+	- telefone do cliente
+	- local da festa
+	- data da festa
+	- Descrição dos produtos
+		- código
+		- nome
+		- referencia
+		- quantidade
+		- valor unitário
+		- valor total
+	
+	- pesquisas da tabela com opções de filtro por nome, local, data, n° orçamento
+	- cada festa terá estados de confirmada, entregue ou recolhida.
+	- terá opção de indexação de consumo, locação, avarias, nota fiscal.
+	- informações sobre quem recolheu, e quem entregou.
+
+	- dados na linha da tabela serão na ordem: data, local, nome, tipo de festa.
+
+- relatório de produtos em festas com filtro de data
+
+- impressão de orçamentos diversificada
+	- versão cliente
+		- título
+		- n° orçamento
+		- Nome
+		- OBS1
+		- OBS2
+		- local da festa
+		- data
+		- quantidade de pessoas
+		- descrição dos produtos com foto
+		- valor total e valor entrada
+		- informe de prestação de serviços
+		- dados para contato
+	- versão entregador
+		- título
+		- n° orçamento
+		- Nome
+		- OBS1
+		- OBS2
+		- local da festa
+		- data
+		- quantidade de pessoas
+		- descrição dos produtos sem foto
+		- Campo para observações e itens adicionais
+		- opção para informar valores pagos pelo cliente
+		- opção para marcar quem entregou e quem recolheu
