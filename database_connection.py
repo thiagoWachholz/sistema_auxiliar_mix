@@ -1,6 +1,7 @@
 # type:ignore
 import json
 import os
+import sqlite3
 
 import firebirdsql
 
@@ -33,14 +34,125 @@ conn_mc = firebirdsql.connect(
 cur_mc = conn_mc.cursor()
 
 # Criando conexão com banco de dados proprio do sistema
-conn_tw = firebirdsql.connect(
-    user=username,
-    password=password,
-    database=database_name_tw,
-    host='localhost',
-    charset='ANSI'
-)
+conn_tw = sqlite3.connect('database\\banco_tw.db')
 cur_tw = conn_tw.cursor()
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS USUARIOS (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        SENHA CHAR(5),
+        NOME VARCHAR(50),
+        TELEFONE VARCHAR(20)
+    );
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS TIPO_FESTA (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        NOME VARCHAR(255)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS ENTREGADORES (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        NOME VARCHAR(255)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS LOCAL_FESTA (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        NOME VARCHAR(255),
+        ENDERECO VARCHAR(255),
+        CONTATO VARCHAR(255)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS PRODUTOS (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        CATEGORIA VARCHAR(255),
+        IMAGEM VARCHAR(255)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS FESTAS (
+        N_ORCAMENTO INTEGER NOT NULL PRIMARY KEY,
+        DATA DATE,
+        LOCAL VARCHAR(255),
+        TIPO VARCHAR(255),
+        QTD_PESSOAS INT,
+        QTD_ALCOOLICOS INT
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS FESTAS_CONFIRMADAS (
+        N_ORCAMENTO INTEGER NOT NULL PRIMARY KEY,
+        ESTADO VARCHAR(10),
+        CONSUMO DECIMAL(10,2),
+        LOCACAO DECIMAL(10,2),
+        AVARIA DECIMAL(10,2),
+        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE CONSUMO (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        N_ORCAMENTO INTEGER,
+        COD_PRODUTO CHAR(7),
+        QUANTIDADE INT,
+        VALOR DECIMAL(10,2),
+        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE LOCACAO (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        N_ORCAMENTO INTEGER,
+        COD_PRODUTO CHAR(7),
+        QUANTIDADE INT,
+        VALOR DECIMAL(10,2),
+        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
+    )
+    """
+)
+
+cur_tw.execute(
+    """
+    CREATE TABLE AVARIA (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        N_ORCAMENTO INTEGER,
+        COD_PRODUTO CHAR(7),
+        QUANTIDADE INT,
+        VALOR DECIMAL(10,2),
+        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
+    )
+    """
+)
+
+conn_tw.commit()
 
 if __name__ == "__main__":
     pass

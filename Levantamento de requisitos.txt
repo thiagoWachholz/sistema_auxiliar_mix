@@ -37,10 +37,24 @@ requisitos não funcionais
 		- Consumo
 		- Locação
 		- Avaria
-		- Chave NFE1
-		- Chave NFE2
-		- Chave NFSE1
-		- Chave NFSE2
+	- Consumo
+		- id
+		- n° orçamento
+		- codigo produto
+		- quantidade
+		- valor
+	- Avaria
+		- id
+		- n° orçamento
+		- codigo produto
+		- quantidade
+		- valor
+	- Locacao
+		- id
+		- n° orçamento
+		- codigo produto
+		- quantidade
+		- valor
 
 requisitos funcionais
 - tabela de festas confirmadas
