@@ -37,6 +37,7 @@ cur_mc = conn_mc.cursor()
 conn_tw = sqlite3.connect('database\\banco_tw.db')
 cur_tw = conn_tw.cursor()
 
+# Criando tabelas caso ainda não existam
 cur_tw.execute(
     """
     CREATE TABLE IF NOT EXISTS USUARIOS (
@@ -115,7 +116,7 @@ cur_tw.execute(
 
 cur_tw.execute(
     """
-    CREATE TABLE CONSUMO (
+    CREATE TABLE IF NOT EXISTS CONSUMO (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         N_ORCAMENTO INTEGER,
         COD_PRODUTO CHAR(7),
@@ -128,7 +129,7 @@ cur_tw.execute(
 
 cur_tw.execute(
     """
-    CREATE TABLE LOCACAO (
+    CREATE TABLE IF NOT EXISTS LOCACAO (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         N_ORCAMENTO INTEGER,
         COD_PRODUTO CHAR(7),
@@ -141,7 +142,7 @@ cur_tw.execute(
 
 cur_tw.execute(
     """
-    CREATE TABLE AVARIA (
+    CREATE TABLE IF NOT EXISTS AVARIA (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         N_ORCAMENTO INTEGER,
         COD_PRODUTO CHAR(7),
