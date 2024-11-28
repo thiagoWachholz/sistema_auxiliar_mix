@@ -16,7 +16,7 @@ else:
         database_name = ['a', 'b']
         json.dump(database_name, arquivo)
 database_name_mc = database_name[0] + '\\MCSISTEMASFB.FDB'
-database_name_tw = database_name[0] + '\\TWDATABASE.FDB'
+database_name_tw = database_name[0] + '\\banco_tw.db'
 
 username = "SYSDBA"
 password = "masterkey"
@@ -34,7 +34,7 @@ conn_mc = firebirdsql.connect(
 cur_mc = conn_mc.cursor()
 
 # Criando conexão com banco de dados proprio do sistema
-conn_tw = sqlite3.connect('database\\banco_tw.db')
+conn_tw = sqlite3.connect(database_name_tw)
 cur_tw = conn_tw.cursor()
 
 # Criando tabelas caso ainda não existam
