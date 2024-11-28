@@ -1,13 +1,46 @@
 # type:ignore
 import sqlite3
+import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QGridLayout, QLabel, QLineEdit, QMainWindow,
-                               QMenu, QMenuBar, QMessageBox, QPushButton,
+from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QLineEdit,
+                               QMainWindow, QMenu, QMenuBar, QMessageBox,
+                               QPushButton, QTableWidget, QTableWidgetItem,
                                QWidget)
 
 from database_connection import cur_tw
+from objects import Usuario, get_usuarios
+
+
+class MyTable(QTableWidget):
+    def __init__(self):
+        super().__init__()
+
+    def tabela_usuarios(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 50)
+            self.setColumnCount(3)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 500)
+            self.setHorizontalHeaderLabels(['ID', 'Nome', 'Telefone'])
+            for i in range(len(lista)):
+                item1 = QTableWidgetItem(str(lista[i].id))
+                item1.setFlags(item1.flags() & Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(lista[i].nome)
+                item2.setFlags(item2.flags() & Qt.ItemIsEditable)
+                item3 = QTableWidgetItem(lista[i].telefone)
+                item3.setFlags(item3.flags() & Qt.ItemIsEditable)
+                self.setItem(i, 0, item1)
+                self.setItem(i, 1, item2)
+                self.setItem(i, 2, item3)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
 
 
 class MyButton(QPushButton):
@@ -115,22 +148,88 @@ class MyWindow(QMainWindow):
 
     def w2_menu_principal(self):
 
+        def show_w3():
+            self.w3 = MyWindow('Usuários', usuario=self.usuario)
+            self.w3.w3_usuarios()
+
         # Menu
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
         menu_arquivo = QMenu('Arquivo', self)
         menu_bar.addMenu(menu_arquivo)
-        acao_banco_de_dados = QAction('Banco de Dados', self)
         acao_usuarios = QAction('Usuarios', self)
-        menu_arquivo.addAction(acao_banco_de_dados)
         menu_arquivo.addAction(acao_usuarios)
 
         # Widgets da janela
         self.button_eventos = QPushButton('Eventos')
         self.button_produtos = QPushButton('Produtos')
 
+        # Signals dos widgets
+        acao_usuarios.triggered.connect(lambda: show_w3())
+
         # Layout da janela
         self.layout.addWidget(self.button_eventos, 1, 1, 1, 1)
         self.layout.addWidget(self.button_produtos, 2, 1, 1, 1)
 
-        self.show()
+        self.showMaximized()
+
+    def w3_usuarios(self):
+
+        def check_values(senha):
+            if len(senha) != 5:
+                print('Erro')
+                return False
+            else:
+                print('Acerto')
+                return True
+
+        def add_usuario(nome, senha, telefone):
+            if not check_values(senha.text()):
+                MyMessageBox('Senha deve ter apenas 5 dígitos!')
+                return False
+            novo_usuario = Usuario(senha.text(), nome.text(), telefone.text())
+            novo_usuario.add_usuario_database()
+            senha.setText('')
+            nome.setText('')
+            telefone.setText('')
+            MyMessageBox('Usuário Adicionado com Sucesso!')
+
+        # Widgets da janela
+        self.w3_label_nome = QLabel('Nome: ')
+        self.w3_input_nome = QLineEdit()
+        self.w3_label_senha = QLabel('Senha: ')
+        self.w3_input_senha = QLineEdit()
+        self.w3_label_telefone = QLabel('Telefone: ')
+        self.w3_input_telefone = QLineEdit()
+        self.w3_button_adicionar = MyButton("Adicionar")
+        self.w3_table_usuarios = MyTable()
+        self.w3_button_remover = MyButton("Remover")
+
+        # Ações dos Widgets
+        self.w3_table_usuarios.tabela_usuarios(get_usuarios())
+        self.w3_button_adicionar.clicked.connect(lambda: add_usuario(
+            self.w3_input_nome, self.w3_input_senha,
+            self.w3_input_telefone
+        ))
+        self.w3_button_adicionar.clicked.connect(
+            lambda: self.w3_table_usuarios.tabela_usuarios(get_usuarios()))
+
+        # Layout da janela
+        self.layout.addWidget(self.w3_label_nome, 1, 1, 1, 1)
+        self.layout.addWidget(self.w3_input_nome, 1, 2, 1, 1)
+        self.layout.addWidget(self.w3_label_senha, 2, 1, 1, 1)
+        self.layout.addWidget(self.w3_input_senha, 2, 2, 1, 1)
+        self.layout.addWidget(self.w3_label_telefone, 3, 1, 1, 1)
+        self.layout.addWidget(self.w3_input_telefone, 3, 2, 1, 1)
+        self.layout.addWidget(self.w3_button_adicionar, 4, 1, 1, 2)
+        self.layout.addWidget(self.w3_table_usuarios, 5, 1, 1, 2)
+        self.layout.addWidget(self.w3_button_remover, 6, 1, 1, 2)
+
+        self.showMaximized()
+
+
+if __name__ == "__main__":
+    app = QApplication()
+    window = MyWindow('Inicio', usuario='1')
+    window.w2_menu_principal()
+    sys.exit(app.exec())
