@@ -11,6 +11,11 @@ usuarios = get_usuarios()
 
 if __name__ == "__main__":
     app = QApplication()
+
+    # setando o estilo
+    with open("estilo.qss", "r") as f:
+        app.setStyleSheet(f.read())
+
     window = MyWindow('Tela de Login')
     window.w1_login_screen()
     sys.exit(app.exec())

@@ -17,9 +17,18 @@ class Usuario():
         )
         conn_tw.commit()
 
+    def remove_usuario_database(self):
+        cur_tw.execute(
+            f"""
+            DELETE FROM USUARIOS
+            WHERE ID = '{self.id}'
+            """
+        )
+        conn_tw.commit()
+
 
 def get_usuarios():
-    usuarios = []
+    usuarios = {}
     cur_tw.execute(
         """
         SELECT * FROM USUARIOS
@@ -28,9 +37,8 @@ def get_usuarios():
     select = cur_tw.fetchall()
     if len(select) > 0:
         for usuario in select:
-            usuarios.append(
-                Usuario(usuario[1], usuario[2], usuario[3], id=usuario[0])
-            )
+            usuarios[f'{usuario[0]}'] = Usuario(
+                usuario[1], usuario[2], usuario[3], id=usuario[0])
     return usuarios
 
 

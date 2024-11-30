@@ -3,7 +3,7 @@ import sqlite3
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QLineEdit,
                                QMainWindow, QMenu, QMenuBar, QMessageBox,
                                QPushButton, QTableWidget, QTableWidgetItem,
@@ -27,16 +27,16 @@ class MyTable(QTableWidget):
             for i in range(self.columnCount()):
                 self.setColumnWidth(i, 500)
             self.setHorizontalHeaderLabels(['ID', 'Nome', 'Telefone'])
-            for i in range(len(lista)):
+            for numero, i in enumerate(lista):
                 item1 = QTableWidgetItem(str(lista[i].id))
-                item1.setFlags(item1.flags() & Qt.ItemIsEditable)
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
                 item2 = QTableWidgetItem(lista[i].nome)
-                item2.setFlags(item2.flags() & Qt.ItemIsEditable)
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
                 item3 = QTableWidgetItem(lista[i].telefone)
-                item3.setFlags(item3.flags() & Qt.ItemIsEditable)
-                self.setItem(i, 0, item1)
-                self.setItem(i, 1, item2)
-                self.setItem(i, 2, item3)
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -48,17 +48,6 @@ class MyButton(QPushButton):
         super().__init__()
         self.setText(texto)
         self.janela_pai = self.parent()
-
-    def activated(self, fun):
-
-        def check_selected():
-            if self.window().focusWidget() == self:
-                return fun()
-
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.atalho = QShortcut(QKeySequence("Return"), self)
-        self.atalho.activated.connect(check_selected)
-        self.clicked.connect(check_selected)
 
 
 class MyMessageBox(QMessageBox):
@@ -79,6 +68,12 @@ class MyWindow(QMainWindow):
         self.layout = QGridLayout()
         self.layout.setContentsMargins(50, 50, 50, 50)
         self.central_widget.setLayout(self.layout)
+
+    def remover_widgets(self):
+        while self.layout.count() > 0:
+            item = self.layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
     # Janela 1 - Tela de login
     def w1_login_screen(self):
@@ -103,15 +98,9 @@ class MyWindow(QMainWindow):
         def login(codigo, senha):
             if check_login(codigo, senha):
 
-                def remover_widgets(self):
-                    while self.layout.count() > 0:
-                        item = self.layout.takeAt(0)
-                        if item.widget():
-                            item.widget().deleteLater()
-
                 self.usuario = codigo
                 self.setWindowTitle('Início')
-                remover_widgets(self)
+                self.remover_widgets()
                 self.w2_menu_principal()
                 return True
             else:
@@ -131,7 +120,7 @@ class MyWindow(QMainWindow):
         self.input_senha.setEchoMode(QLineEdit.Password)
 
         # Signals dos widgets
-        self.button_entrar.activated(
+        self.button_entrar.clicked.connect(
             lambda: login(
                 self.input_codigo.text(),
                 self.input_senha.text())
@@ -194,6 +183,11 @@ class MyWindow(QMainWindow):
             telefone.setText('')
             MyMessageBox('Usuário Adicionado com Sucesso!')
 
+        def w3w(table):
+            if table.item(table.currentRow(), 0) is not None:
+                self.w3w = MyWindow('Janela', usuario='1')
+                self.w3w.w3_check_remove_user(table)
+
         # Widgets da janela
         self.w3_label_nome = QLabel('Nome: ')
         self.w3_input_nome = QLineEdit()
@@ -213,6 +207,9 @@ class MyWindow(QMainWindow):
         ))
         self.w3_button_adicionar.clicked.connect(
             lambda: self.w3_table_usuarios.tabela_usuarios(get_usuarios()))
+        self.w3_button_remover.clicked.connect(
+            lambda: w3w(self.w3_table_usuarios)
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w3_label_nome, 1, 1, 1, 1)
@@ -226,6 +223,53 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w3_button_remover, 6, 1, 1, 2)
 
         self.showMaximized()
+
+    def checandosenaobugou(self):
+        self.button_teste = QPushButton('Teste')
+        self.layout.addWidget(self.button_teste, 0, 0, 1, 1)
+        self.show()
+
+    # Função para checar a remoção do usuario
+    def w3_check_remove_user(self, table):
+
+        def check_senha_user(senha, usuario, usuarios):
+            if senha == usuarios[usuario].senha:
+                return True
+            else:
+                return False
+
+        def remove_user(senha, usuario):
+            usuarios = get_usuarios()
+            if check_senha_user(senha.text(), usuario, usuarios):
+                usuarios[usuario].remove_usuario_database()
+            else:
+                MyMessageBox('Senha Incorreta!')
+            self.close()
+
+        self.user_to_remove = table.item(table.currentRow(), 0).text()
+
+        self.w3_label_title_check_senha = QLabel(
+            f'Deseja remover o usuário {self.user_to_remove}?')
+        self.w3_label_check_senha = QLabel('Senha do Usuário: ')
+        self.w3_input_check_senha = QLineEdit()
+        self.w3_button_yes_check_senha = MyButton('Sim')
+        self.w3_button_no_check_senha = MyButton('Não')
+
+        self.w3_button_yes_check_senha.clicked.connect(
+            lambda: remove_user(self.w3_input_check_senha, self.user_to_remove)
+        )
+        self.w3_button_yes_check_senha.clicked.connect(
+            lambda: table.tabela_usuarios(get_usuarios())
+        )
+        self.w3_button_no_check_senha.clicked.connect(lambda: self.close())
+
+        self.layout.addWidget(self.w3_label_title_check_senha, 1, 1, 1, 2)
+        self.layout.addWidget(self.w3_label_check_senha, 2, 1, 1, 1)
+        self.layout.addWidget(self.w3_input_check_senha, 2, 2, 1, 1)
+        self.layout.addWidget(self.w3_button_yes_check_senha, 3, 1, 1, 1)
+        self.layout.addWidget(self.w3_button_no_check_senha, 3, 2, 1, 1)
+
+        self.show()
 
 
 if __name__ == "__main__":
