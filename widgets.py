@@ -3,7 +3,7 @@ import sqlite3
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QKeyEvent
 from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QLineEdit,
                                QMainWindow, QMenu, QMenuBar, QMessageBox,
                                QPushButton, QTableWidget, QTableWidgetItem,
@@ -49,6 +49,10 @@ class MyButton(QPushButton):
         self.setText(texto)
         self.janela_pai = self.parent()
 
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            self.clicked.emit()
+
 
 class MyMessageBox(QMessageBox):
     def __init__(self, mensagem):
@@ -68,6 +72,10 @@ class MyWindow(QMainWindow):
         self.layout = QGridLayout()
         self.layout.setContentsMargins(50, 50, 50, 50)
         self.central_widget.setLayout(self.layout)
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            self.focusNextChild()
 
     def remover_widgets(self):
         while self.layout.count() > 0:
@@ -207,6 +215,9 @@ class MyWindow(QMainWindow):
         ))
         self.w3_button_adicionar.clicked.connect(
             lambda: self.w3_table_usuarios.tabela_usuarios(get_usuarios()))
+        self.w3_input_nome.returnPressed.connect(
+            lambda: w3w(self.w3_table_usuarios)
+        )
         self.w3_button_remover.clicked.connect(
             lambda: w3w(self.w3_table_usuarios)
         )
