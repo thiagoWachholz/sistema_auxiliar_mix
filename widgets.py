@@ -149,6 +149,10 @@ class MyWindow(QMainWindow):
             self.w3 = MyWindow('Usuários', usuario=self.usuario)
             self.w3.w3_usuarios()
 
+        def show_w4():
+            self.w4 = MyWindow('Produtos', usuario=self.usuario)
+            self.w4.w4_produtos()
+
         # Menu
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
@@ -163,6 +167,7 @@ class MyWindow(QMainWindow):
 
         # Signals dos widgets
         acao_usuarios.triggered.connect(lambda: show_w3())
+        self.button_produtos.clicked.connect(lambda: show_w4())
 
         # Layout da janela
         self.layout.addWidget(self.button_eventos, 1, 1, 1, 1)
@@ -235,11 +240,6 @@ class MyWindow(QMainWindow):
 
         self.showMaximized()
 
-    def checandosenaobugou(self):
-        self.button_teste = QPushButton('Teste')
-        self.layout.addWidget(self.button_teste, 0, 0, 1, 1)
-        self.show()
-
     # Função para checar a remoção do usuario
     def w3_check_remove_user(self, table):
 
@@ -282,9 +282,30 @@ class MyWindow(QMainWindow):
 
         self.show()
 
+    def w4_produtos(self):
+
+        # Widgets da janela
+        self.w4_label_pesquisa = QLabel('Pesquisa')
+        self.w4_input_pesquisa = QLineEdit()
+        self.w4_table_produtos = MyTable()
+        self.w4_button_change_image = MyButton('Trocar Imagem')
+
+        # Layout da janela
+        self.layout.addWidget(self.w4_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.w4_input_pesquisa, 0, 1, 1, 1)
+        self.layout.addWidget(self.w4_table_produtos, 1, 0, 1, 2)
+        self.layout.addWidget(self.w4_button_change_image, 2, 0, 1, 2)
+
+        self.showMaximized()
+
 
 if __name__ == "__main__":
     app = QApplication()
+
+    # setando o estilo
+    with open("estilo.qss", "r") as f:
+        app.setStyleSheet(f.read())
+
     window = MyWindow('Inicio', usuario='1')
     window.w2_menu_principal()
     sys.exit(app.exec())

@@ -110,7 +110,9 @@ janela 10 - cadastros
 janela 11 - Produtos
 	- label Produtos
 	- table produtos
+		- imagem
 		- código
-		- nome + referencia
+		- nome
+		- referencia
 		- categoria
 	- button adicionar imagem -> mensagem de confirmação para imagem - button ver imagem

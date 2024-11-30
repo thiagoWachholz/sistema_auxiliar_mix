@@ -1,4 +1,8 @@
-from database_connection import conn_tw, cur_tw
+import os
+
+from database_connection import conn_tw, cur_mc, cur_tw
+
+caminho_images = os.getcwd() + '\\images'
 
 
 class Usuario():
@@ -27,6 +31,19 @@ class Usuario():
         conn_tw.commit()
 
 
+class Produto():
+    def __init__(self, codigo, nome, ref, preco,
+                 image=caminho_images+'\\bebida.jpg',
+                 quantidade=1, categoria='Não Definido') -> None:
+        self.codigo = codigo
+        self.nome = nome
+        self.ref = ref
+        self.preco = preco
+        self.image = image
+        self.quantidade = quantidade
+        self.categoria = categoria
+
+
 def get_usuarios():
     usuarios = {}
     cur_tw.execute(
@@ -42,7 +59,68 @@ def get_usuarios():
     return usuarios
 
 
+def get_produtos_mc():
+    produtos = {}
+    cur_mc.execute(
+        """
+        SELECT AC03CODI, AC03DESC, AC03REF, AN03PRC1
+        FROM MC03PRO
+        """
+    )
+    select = cur_mc.fetchall()
+    for produto in select:
+        produtos[f'{produto[0]}'] = Produto(
+            produto[0], produto[1], produto[2], produto[3])
+    return produtos
+
+
+def check_produtos():
+    produtos_mc = get_produtos_mc()
+    cur_tw.execute(
+        """
+        SELECT * FROM PRODUTOS
+        """
+    )
+    select = cur_tw.fetchall()
+    cod_produtos_tw = [i[1] for i in select]
+    for produto in produtos_mc:
+        if produto not in cod_produtos_tw:
+            cur_tw.execute(
+                f"""
+                INSERT INTO PRODUTOS (CODIGO, CATEGORIA, IMAGEM)
+                VALUES
+                ('{produtos_mc[produto].codigo}',
+                '{produtos_mc[produto].categoria}',
+                '{produtos_mc[produto].image}')
+                """
+            )
+    conn_tw.commit()
+
+
+def get_produtos():
+    produtos = {}
+    cur_mc.execute(
+        """
+        SELECT AC03CODI, AC03DESC, AC03REF, AN03PRC1
+        FROM MC03PRO
+        """
+    )
+    select_mc = cur_mc.fetchall()
+    cur_tw.execute(
+        """
+        SELECT CODIGO, CATEGORIA, IMAGEM
+        FROM PRODUTOS
+        """
+    )
+    select_tw = cur_tw.fetchall()
+    for produto in select_mc:
+        produtos[f'{produto[0]}'] = Produto(
+            produto[0], produto[1], produto[2], produto[3])
+    for produto in select_tw:
+        produtos[produto[0]].categoria = produto[1]
+        produtos[produto[0]].image = produto[2]
+    return produtos
+
+
 if __name__ == "__main__":
-    usuarios = get_usuarios()
-    for usuario in usuarios:
-        print(usuario.nome, usuario.id, usuario.senha, usuario.telefone)
+    pass
