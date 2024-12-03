@@ -84,7 +84,7 @@ cur_tw.execute(
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         CODIGO CHAR(7),
         CATEGORIA VARCHAR(255),
-        IMAGEM VARCHAR(255)
+        IMAGEM VARCHAR(8000)
     )
     """
 )

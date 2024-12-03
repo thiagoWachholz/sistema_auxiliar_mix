@@ -3,14 +3,14 @@ import sqlite3
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeyEvent
-from PySide6.QtWidgets import (QApplication, QGridLayout, QLabel, QLineEdit,
-                               QMainWindow, QMenu, QMenuBar, QMessageBox,
-                               QPushButton, QTableWidget, QTableWidgetItem,
-                               QWidget)
+from PySide6.QtGui import QAction, QColor, QKeyEvent, QPixmap
+from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout, QLabel,
+                               QLineEdit, QMainWindow, QMenu, QMenuBar,
+                               QMessageBox, QPushButton, QTableWidget,
+                               QTableWidgetItem, QWidget)
 
-from database_connection import cur_tw
-from objects import Usuario, get_usuarios
+from database_connection import conn_tw, cur_tw
+from objects import Usuario, caminho_images, get_produtos, get_usuarios
 
 
 class MyTable(QTableWidget):
@@ -37,6 +37,56 @@ class MyTable(QTableWidget):
                 self.setItem(numero, 0, item1)
                 self.setItem(numero, 1, item2)
                 self.setItem(numero, 2, item3)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_produtos(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(6)
+            self.setColumnWidth(0, 100)
+            self.setColumnWidth(1, 300)
+            self.setColumnWidth(2, 100)
+            self.setColumnWidth(3, 100)
+            self.setColumnWidth(4, 100)
+            self.setColumnWidth(5, 100)
+            self.setHorizontalHeaderLabels(
+                ['Código', 'Nome', 'Referência', 'Valor', 'Valor Consignado',
+                 'Imagem'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].codigo))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(lista[i].nome)
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+
+                item3 = QTableWidgetItem(lista[i].ref)
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+
+                preco = format(lista[i].preco, '.2f')
+                item4 = QTableWidgetItem(str(preco))
+                item4.setFlags(item4.flags() & ~Qt.ItemIsEditable)
+
+                preco_consignado = format(lista[i].preco_consignado, '.2f')
+                item5 = QTableWidgetItem(str(preco_consignado))
+                item5.setFlags(item5.flags() & ~Qt.ItemIsEditable)
+                if lista[i].image == caminho_images+'\\bebida.jpg':
+                    item6 = QTableWidgetItem('Não')
+                    item6.setBackground(QColor(105, 45, 33))
+                else:
+                    item6 = QTableWidgetItem('Sim')
+                    item6.setBackground(QColor(44, 138, 82))
+                item6.setFlags(item6.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
+                self.setItem(numero, 3, item4)
+                self.setItem(numero, 4, item5)
+                self.setItem(numero, 5, item6)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -284,19 +334,71 @@ class MyWindow(QMainWindow):
 
     def w4_produtos(self):
 
+        def show_image(table):
+            item = table.item(table.currentRow(), 1).text()
+
+            produtos = get_produtos()
+            produto_selecionado = table.item(table.currentRow(), 0).text()
+            imagem = produtos[produto_selecionado].image
+
+            self.w4_image = MyWindow(item)
+            self.w4_image.w4_image(caminho_imagem=imagem)
+
+        def att_w4_table(pesquisa, table):
+            table.tabela_produtos(get_produtos(nome=pesquisa))
+
+        def change_image(table):
+            item = table.item(table.currentRow(), 0).text()
+            caminho_arquivo, _ = QFileDialog.getOpenFileName(
+                self, "Selecionar Arquivo")
+            if caminho_arquivo:
+                cur_tw.execute(
+                    f"""
+                    UPDATE PRODUTOS
+                    SET IMAGEM = '{caminho_arquivo}'
+                    WHERE CODIGO = '{item}'
+                    """
+                )
+                conn_tw.commit()
+                MyMessageBox('Imagem Alterada!')
+
         # Widgets da janela
         self.w4_label_pesquisa = QLabel('Pesquisa')
         self.w4_input_pesquisa = QLineEdit()
         self.w4_table_produtos = MyTable()
+        self.w4_button_image = MyButton('Ver Imagem')
         self.w4_button_change_image = MyButton('Trocar Imagem')
+
+        # Ações dos Widgets
+        self.w4_table_produtos.tabela_produtos(get_produtos())
+        self.w4_input_pesquisa.textChanged.connect(
+            lambda: att_w4_table(self.w4_input_pesquisa.text(),
+                                 self.w4_table_produtos))
+        self.w4_button_image.clicked.connect(
+            lambda: show_image(self.w4_table_produtos))
+        self.w4_button_change_image.clicked.connect(
+            lambda: change_image(self.w4_table_produtos)
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w4_label_pesquisa, 0, 0, 1, 1)
         self.layout.addWidget(self.w4_input_pesquisa, 0, 1, 1, 1)
         self.layout.addWidget(self.w4_table_produtos, 1, 0, 1, 2)
-        self.layout.addWidget(self.w4_button_change_image, 2, 0, 1, 2)
+        self.layout.addWidget(self.w4_button_image, 2, 0, 1, 2)
+        self.layout.addWidget(self.w4_button_change_image, 3, 0, 1, 2)
 
         self.showMaximized()
+
+    def w4_image(self, caminho_imagem=caminho_images+'\\bebida.jpg'):
+
+        self.w4_label_image = QLabel()
+        pixmap = QPixmap(caminho_imagem)
+        pixmap = pixmap.scaled(480, 480)
+        self.w4_label_image.setPixmap(pixmap)
+
+        self.layout.addWidget(self.w4_label_image, 0, 0, 1, 1)
+
+        self.show()
 
 
 if __name__ == "__main__":
@@ -305,7 +407,6 @@ if __name__ == "__main__":
     # setando o estilo
     with open("estilo.qss", "r") as f:
         app.setStyleSheet(f.read())
-
     window = MyWindow('Inicio', usuario='1')
     window.w2_menu_principal()
     sys.exit(app.exec())

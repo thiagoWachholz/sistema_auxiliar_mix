@@ -39,6 +39,7 @@ class Produto():
         self.nome = nome
         self.ref = ref
         self.preco = preco
+        self.preco_consignado = preco
         self.image = image
         self.quantidade = quantidade
         self.categoria = categoria
@@ -97,13 +98,19 @@ def check_produtos():
     conn_tw.commit()
 
 
-def get_produtos():
+def get_produtos(order_by='AC03CODI', nome=None):
     produtos = {}
-    cur_mc.execute(
-        """
+    select_base = """
         SELECT AC03CODI, AC03DESC, AC03REF, AN03PRC1
         FROM MC03PRO
+        WHERE 1=1
         """
+    if nome is not None:
+        like = f" AND LOWER(AC03DESC) LIKE '%{nome.lower()}%'"
+        select_base = select_base + like
+    select_base = select_base + f" ORDER BY {order_by}"
+    cur_mc.execute(
+        select_base
     )
     select_mc = cur_mc.fetchall()
     cur_tw.execute(
@@ -117,10 +124,14 @@ def get_produtos():
         produtos[f'{produto[0]}'] = Produto(
             produto[0], produto[1], produto[2], produto[3])
     for produto in select_tw:
-        produtos[produto[0]].categoria = produto[1]
-        produtos[produto[0]].image = produto[2]
+        if produto[0] in produtos:
+            produtos[produto[0]].categoria = produto[1]
+            produtos[produto[0]].image = produto[2]
     return produtos
 
 
 if __name__ == "__main__":
-    pass
+    with open('images/bebida.jpg', 'rb') as arquivo:
+        image = arquivo.read()
+
+    print(len(str(image)))
