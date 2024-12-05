@@ -85,8 +85,14 @@ janela 8 - adicionar festa
 	- label tipo de festa - input cod tipo festa - checkbox - input tipo festa - label quantidade de pessoas - input quantidade de pessoas - label alcoólicos - input alcoólicos
 	- label observação 1
 	- textarea observação 1
-	- label observação 1
-	- textarea observação 1
+	- label observação 2
+	- textarea observação 2
+	- area de produtos da festa
+	- cod produto - qtde produto - valor produto
+	- button adicionar - button remover
+	- table produtos da festa
+	- area valores
+	- desconto em % - desconto em $ - valor total
 	- button confirmar - button sair
 
 janela 9 - imprimir evento

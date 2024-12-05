@@ -154,6 +154,15 @@ cur_tw.execute(
     """
 )
 
+cur_tw.execute(
+    """
+    CREATE TABLE IF NOT EXISTS CATEGORIA (
+        ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        NOME VARCHAR(50)
+    )
+    """
+)
+
 conn_tw.commit()
 
 if __name__ == "__main__":

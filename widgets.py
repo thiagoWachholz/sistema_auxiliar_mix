@@ -4,13 +4,14 @@ import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QKeyEvent, QPixmap
-from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout, QLabel,
-                               QLineEdit, QMainWindow, QMenu, QMenuBar,
-                               QMessageBox, QPushButton, QTableWidget,
-                               QTableWidgetItem, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
+                               QGridLayout, QLabel, QLineEdit, QMainWindow,
+                               QMenu, QMenuBar, QMessageBox, QPushButton,
+                               QTableWidget, QTableWidgetItem, QWidget)
 
 from database_connection import conn_tw, cur_tw
-from objects import Usuario, caminho_images, get_produtos, get_usuarios
+from objects import (Categoria, Usuario, caminho_images, get_categorias,
+                     get_produtos, get_usuarios)
 
 
 class MyTable(QTableWidget):
@@ -48,45 +49,69 @@ class MyTable(QTableWidget):
             self.setRowCount(len(lista))
             for i in range(self.rowCount()):
                 self.setRowHeight(i, 20)
-            self.setColumnCount(6)
+            self.setColumnCount(7)
             self.setColumnWidth(0, 100)
             self.setColumnWidth(1, 300)
             self.setColumnWidth(2, 100)
             self.setColumnWidth(3, 100)
             self.setColumnWidth(4, 100)
             self.setColumnWidth(5, 100)
+            self.setColumnWidth(6, 100)
             self.setHorizontalHeaderLabels(
-                ['Código', 'Nome', 'Referência', 'Valor', 'Valor Consignado',
-                 'Imagem'])
+                ['Código', 'Nome', 'Categoria', 'Referência', 'Valor',
+                 'Valor Consignado', 'Imagem'])
             for numero, i in enumerate(lista):
                 item1 = QTableWidgetItem(str(lista[i].codigo))
                 item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
                 item2 = QTableWidgetItem(lista[i].nome)
                 item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
 
-                item3 = QTableWidgetItem(lista[i].ref)
+                item3 = QTableWidgetItem(lista[i].categoria)
                 item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
 
-                preco = format(lista[i].preco, '.2f')
-                item4 = QTableWidgetItem(str(preco))
+                item4 = QTableWidgetItem(lista[i].ref)
                 item4.setFlags(item4.flags() & ~Qt.ItemIsEditable)
 
-                preco_consignado = format(lista[i].preco_consignado, '.2f')
-                item5 = QTableWidgetItem(str(preco_consignado))
+                preco = format(lista[i].preco, '.2f')
+                item5 = QTableWidgetItem(str(preco))
                 item5.setFlags(item5.flags() & ~Qt.ItemIsEditable)
-                if lista[i].image == caminho_images+'\\bebida.jpg':
-                    item6 = QTableWidgetItem('Não')
-                    item6.setBackground(QColor(105, 45, 33))
-                else:
-                    item6 = QTableWidgetItem('Sim')
-                    item6.setBackground(QColor(44, 138, 82))
+
+                preco_consignado = format(lista[i].preco_consignado, '.2f')
+                item6 = QTableWidgetItem(str(preco_consignado))
                 item6.setFlags(item6.flags() & ~Qt.ItemIsEditable)
+                if lista[i].image == caminho_images+'\\bebida.jpg':
+                    item7 = QTableWidgetItem('Não')
+                    item7.setBackground(QColor(105, 45, 33))
+                else:
+                    item7 = QTableWidgetItem('Sim')
+                    item7.setBackground(QColor(44, 138, 82))
+                item7.setFlags(item6.flags() & ~Qt.ItemIsEditable)
                 self.setItem(numero, 0, item1)
                 self.setItem(numero, 1, item2)
                 self.setItem(numero, 2, item3)
                 self.setItem(numero, 3, item4)
                 self.setItem(numero, 4, item5)
                 self.setItem(numero, 5, item6)
+                self.setItem(numero, 6, item7)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_categorias(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(1)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 150)
+            self.setHorizontalHeaderLabels(['Nome'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].nome))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -132,6 +157,14 @@ class MyWindow(QMainWindow):
             item = self.layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+
+    def confirm(self, titulo, mensagem):
+        resposta = QMessageBox.question(
+            self, titulo, mensagem)
+        if resposta == QMessageBox.Yes:
+            return True
+        else:
+            return False
 
     # Janela 1 - Tela de login
     def w1_login_screen(self):
@@ -203,6 +236,10 @@ class MyWindow(QMainWindow):
             self.w4 = MyWindow('Produtos', usuario=self.usuario)
             self.w4.w4_produtos()
 
+        def show_w5():
+            self.w5 = MyWindow('Eventos', usuario=self.usuario)
+            self.w5.w5_eventos()
+
         # Menu
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
@@ -218,6 +255,7 @@ class MyWindow(QMainWindow):
         # Signals dos widgets
         acao_usuarios.triggered.connect(lambda: show_w3())
         self.button_produtos.clicked.connect(lambda: show_w4())
+        self.button_eventos.clicked.connect(lambda: show_w5())
 
         # Layout da janela
         self.layout.addWidget(self.button_eventos, 1, 1, 1, 1)
@@ -362,12 +400,30 @@ class MyWindow(QMainWindow):
                 conn_tw.commit()
                 MyMessageBox('Imagem Alterada!')
 
+        def show_categorias():
+            self.w_categorias = MyWindow('Categorias')
+            self.w_categorias.w4_categorias()
+
+        def change_categoria(table):
+            item = table.item(table.currentRow(), 1).text()
+            self.w_change_categoria = MyWindow(f'{item}')
+            self.w_change_categoria.w4_change_categoria(table)
+
+        # Menu da janela
+        self.w4_menu_bar = QMenuBar(self)
+        self.setMenuBar(self.w4_menu_bar)
+        self.w4_menu_arquivo = QMenu('Arquivo', self)
+        self.w4_menu_bar.addMenu(self.w4_menu_arquivo)
+        self.w4_acao_categorias = QAction('Categorias', self)
+        self.w4_menu_arquivo.addAction(self.w4_acao_categorias)
+
         # Widgets da janela
         self.w4_label_pesquisa = QLabel('Pesquisa')
         self.w4_input_pesquisa = QLineEdit()
         self.w4_table_produtos = MyTable()
         self.w4_button_image = MyButton('Ver Imagem')
         self.w4_button_change_image = MyButton('Trocar Imagem')
+        self.w4_button_categoria_produto = MyButton('Categoria')
 
         # Ações dos Widgets
         self.w4_table_produtos.tabela_produtos(get_produtos())
@@ -379,13 +435,18 @@ class MyWindow(QMainWindow):
         self.w4_button_change_image.clicked.connect(
             lambda: change_image(self.w4_table_produtos)
         )
+        self.w4_acao_categorias.triggered.connect(lambda: show_categorias())
+        self.w4_button_categoria_produto.clicked.connect(
+            lambda: change_categoria(self.w4_table_produtos)
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w4_label_pesquisa, 0, 0, 1, 1)
-        self.layout.addWidget(self.w4_input_pesquisa, 0, 1, 1, 1)
-        self.layout.addWidget(self.w4_table_produtos, 1, 0, 1, 2)
-        self.layout.addWidget(self.w4_button_image, 2, 0, 1, 2)
-        self.layout.addWidget(self.w4_button_change_image, 3, 0, 1, 2)
+        self.layout.addWidget(self.w4_input_pesquisa, 0, 1, 1, 2)
+        self.layout.addWidget(self.w4_table_produtos, 1, 0, 1, 3)
+        self.layout.addWidget(self.w4_button_image, 2, 0, 1, 1)
+        self.layout.addWidget(self.w4_button_change_image, 2, 1, 1, 1)
+        self.layout.addWidget(self.w4_button_categoria_produto, 2, 2, 1, 1)
 
         self.showMaximized()
 
@@ -399,6 +460,134 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w4_label_image, 0, 0, 1, 1)
 
         self.show()
+
+    def w4_categorias(self):
+
+        def add_categoria(lineedit: QLineEdit, table: MyTable):
+            nova_categoria = Categoria(lineedit.text())
+            nova_categoria.add_to_tablesql()
+            table.tabela_categorias(get_categorias())
+            lineedit.setText('')
+
+        def remove_categoria(table: MyTable):
+            nome_categoria = table.item(table.currentRow(), 0).text()
+            if self.confirm('Remover categoria', f"""
+            Tem certeza que deseja remover a categoria {nome_categoria}?
+            """):
+                categoria_to_remove = Categoria(nome_categoria)
+                categoria_to_remove.remove_fromsql()
+                table.tabela_categorias(get_categorias())
+                produtos = get_produtos(categoria=nome_categoria)
+                for i in produtos:
+                    produtos[i].change_categoria('Não Definido')
+
+        self.w4_label_categoria = QLabel('Nova Categoria: ')
+        self.w4_input_categoria = QLineEdit()
+        self.w4_button_add_categoria = MyButton('Adicionar Categoria')
+        self.w4_table_categorias = MyTable()
+        self.w4_button_remove_categoria = MyButton('Remover Categoria')
+
+        self.w4_table_categorias.tabela_categorias(get_categorias())
+        self.w4_button_add_categoria.clicked.connect(
+            lambda: add_categoria(self.w4_input_categoria,
+                                  self.w4_table_categorias)
+        )
+        self.w4_button_remove_categoria.clicked.connect(
+            lambda: remove_categoria(self.w4_table_categorias)
+        )
+
+        self.layout.addWidget(self.w4_label_categoria, 0, 0, 1, 1)
+        self.layout.addWidget(self.w4_input_categoria, 0, 1, 1, 1)
+        self.layout.addWidget(self.w4_button_add_categoria, 2, 0, 1, 2)
+        self.layout.addWidget(self.w4_table_categorias, 3, 0, 1, 2)
+        self.layout.addWidget(self.w4_button_remove_categoria, 4, 0, 1, 2)
+
+        self.show()
+
+    def w4_change_categoria(self, table):
+
+        def change_categoria(produtos, produto, nova_categoria, table):
+            produtos[produto].change_categoria(nova_categoria)
+            table.tabela_produtos(get_produtos())
+
+        item = table.item(table.currentRow(), 0).text()
+        produtos = get_produtos()
+        self.w4_label_atual_categoria = QLabel(
+            f'Categoria Atual: {produtos[item].nome}')
+        self.w4_label_nova_categoria = QLabel('Nova Categoria do Item: ')
+        self.w4_combo_categoria = QComboBox()
+        categorias = get_categorias()
+        for categoria in categorias:
+            self.w4_combo_categoria.addItem(categorias[categoria].nome)
+        self.w4_button_trocar_categoria = MyButton('Trocar Categoria')
+
+        self.w4_button_trocar_categoria.clicked.connect(
+            lambda: change_categoria(produtos, item,
+                                     self.w4_combo_categoria.currentText(),
+                                     table)
+        )
+        self.w4_button_trocar_categoria.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.w4_label_atual_categoria, 0, 0, 1, 2)
+        self.layout.addWidget(self.w4_label_nova_categoria, 1, 0, 1, 1)
+        self.layout.addWidget(self.w4_combo_categoria, 1, 1, 1, 1)
+        self.layout.addWidget(self.w4_button_trocar_categoria, 2, 0, 1, 2)
+
+        self.show()
+
+    def w5_eventos(self):
+
+        # Widgets da janela
+        self.w5_label_titulo_eventos = QLabel('Eventos Confirmados')
+        self.w5_label_filtro_norcamento = QLabel('N° Orçamento:')
+        self.w5_input_filtro_norcamento = QLineEdit()
+        self.w5_checkbox_filtro_norcamento = QCheckBox()
+        self.w5_label_filtro_data = QLabel('Data:')
+        self.w5_input_filtro_data = QLineEdit()
+        self.w5_checkbox_filtro_data = QCheckBox()
+        self.w5_label_filtro_local = QLabel('Local da Festa:')
+        self.w5_input_filtro_local = QLineEdit()
+        self.w5_checkbox_filtro_local = QCheckBox()
+        self.w5_label_filtro_nome = QLabel('Nome:')
+        self.w5_input_filtro_nome = QLineEdit()
+        self.w5_checkbox_filtro_nome = QCheckBox()
+        self.w5_label_filtro_estado = QLabel('Estado:')
+        self.w5_combobox_filtro_estado = QComboBox()
+        self.w5_checkbox_filtro_estado = QCheckBox()
+        self.w5_table_eventos_confirmados = MyTable()
+        self.w5_button_consultar_festa = MyButton('Consultar Festa')
+        self.w5_button_adicionar_festa = MyButton('Adicionar Festa')
+        self.w5_button_remover_festa = MyButton('Remover Festa')
+        self.w5_button_imprimir_festa = MyButton('Imprimir Festa')
+        self.w5_button_impressoes = MyButton('Impressões')
+
+        # Layout da janela
+        self.layout.addWidget(self.w5_label_titulo_eventos, 0, 0, 1, 12)
+        self.layout.addWidget(self.w5_label_filtro_norcamento, 1, 0, 1, 1)
+        self.layout.addWidget(self.w5_input_filtro_norcamento, 1, 1, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_filtro_norcamento, 1, 2, 1, 1)
+        self.layout.addWidget(self.w5_label_filtro_data, 1, 3, 1, 1)
+        self.layout.addWidget(self.w5_input_filtro_data, 1, 4, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_filtro_data, 1, 5, 1, 1)
+        self.layout.addWidget(self.w5_label_filtro_local, 1, 6, 1, 1)
+        self.layout.addWidget(self.w5_input_filtro_local, 1, 7, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_filtro_local, 1, 8, 1, 1)
+        self.layout.addWidget(self.w5_label_filtro_nome, 1, 9, 1, 1)
+        self.layout.addWidget(self.w5_input_filtro_nome, 1, 10, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_filtro_nome, 1, 11, 1, 1)
+        self.layout.addWidget(self.w5_label_filtro_estado, 2, 0, 1, 1)
+        self.layout.addWidget(self.w5_combobox_filtro_estado, 2, 1, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_filtro_estado, 2, 2, 1, 1)
+        self.layout.addWidget(self.w5_table_eventos_confirmados, 3, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_consultar_festa, 4, 0, 1, 3)
+        self.layout.addWidget(self.w5_button_adicionar_festa, 4, 3, 1, 3)
+        self.layout.addWidget(self.w5_button_remover_festa, 4, 6, 1, 3)
+        self.layout.addWidget(self.w5_button_imprimir_festa, 4, 9, 1, 3)
+        self.layout.addWidget(self.w5_button_impressoes, 5, 0, 1, 12)
+
+        self.showMaximized()
 
 
 if __name__ == "__main__":

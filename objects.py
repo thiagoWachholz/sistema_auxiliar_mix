@@ -44,6 +44,40 @@ class Produto():
         self.quantidade = quantidade
         self.categoria = categoria
 
+    def change_categoria(self, nova_categoria):
+        self.categoria = nova_categoria
+        cur_tw.execute(
+            f"""
+            UPDATE PRODUTOS
+            SET CATEGORIA = '{nova_categoria}'
+            WHERE CODIGO = '{self.codigo}'
+            """
+        )
+        conn_tw.commit()
+
+
+class Categoria():
+    def __init__(self, nome) -> None:
+        self.nome = nome
+
+    def add_to_tablesql(self):
+        cur_tw.execute(
+            f"""
+            INSERT INTO CATEGORIA (NOME)
+            VALUES ('{self.nome}')
+            """
+        )
+        conn_tw.commit()
+
+    def remove_fromsql(self):
+        cur_tw.execute(
+            f"""
+            DELETE FROM CATEGORIA
+            WHERE NOME = '{self.nome}'
+            """
+        )
+        conn_tw.commit()
+
 
 def get_usuarios():
     usuarios = {}
@@ -98,7 +132,7 @@ def check_produtos():
     conn_tw.commit()
 
 
-def get_produtos(order_by='AC03CODI', nome=None):
+def get_produtos(order_by='AC03CODI', nome=None, categoria=None):
     produtos = {}
     select_base = """
         SELECT AC03CODI, AC03DESC, AC03REF, AN03PRC1
@@ -127,7 +161,23 @@ def get_produtos(order_by='AC03CODI', nome=None):
         if produto[0] in produtos:
             produtos[produto[0]].categoria = produto[1]
             produtos[produto[0]].image = produto[2]
+            if categoria is not None:
+                if produtos[produto[0]].categoria != categoria:
+                    del produtos[produto[0]]
     return produtos
+
+
+def get_categorias():
+    categorias = {}
+    cur_tw.execute(
+        """
+        SELECT NOME FROM CATEGORIA
+        """
+    )
+    select = cur_tw.fetchall()
+    for categoria in select:
+        categorias[categoria[0]] = Categoria(categoria[0])
+    return categorias
 
 
 if __name__ == "__main__":
