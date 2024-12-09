@@ -62,7 +62,8 @@ cur_tw.execute(
     """
     CREATE TABLE IF NOT EXISTS ENTREGADORES (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        NOME VARCHAR(255)
+        NOME VARCHAR(255),
+        TELEFONE VARCHAR(15)
     )
     """
 )
@@ -166,4 +167,8 @@ cur_tw.execute(
 conn_tw.commit()
 
 if __name__ == "__main__":
-    pass
+    cur_tw.execute(
+        """
+        """
+    )
+    conn_tw.commit()

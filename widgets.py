@@ -10,8 +10,9 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QTableWidget, QTableWidgetItem, QWidget)
 
 from database_connection import conn_tw, cur_tw
-from objects import (Categoria, Usuario, caminho_images, get_categorias,
-                     get_produtos, get_usuarios)
+from objects import (Categoria, Entregador, Usuario, caminho_images,
+                     get_categorias, get_entregadores, get_produtos,
+                     get_usuarios)
 
 
 class MyTable(QTableWidget):
@@ -112,6 +113,31 @@ class MyTable(QTableWidget):
                 item1 = QTableWidgetItem(str(lista[i].nome))
                 item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
                 self.setItem(numero, 0, item1)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_entregadores(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(3)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 150)
+            self.setHorizontalHeaderLabels(['Id', 'Nome', 'Telefone'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].id))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(str(lista[i].nome))
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                item3 = QTableWidgetItem(str(lista[i].telefone))
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -539,6 +565,22 @@ class MyWindow(QMainWindow):
 
     def w5_eventos(self):
 
+        def show_w5_entregadores():
+            self.w5_e = MyWindow('Entregadores', usuario=self.usuario)
+            self.w5_e.w5_entregadores()
+
+        # Menu da janela
+        self.w5_menu_bar = QMenuBar(self)
+        self.setMenuBar(self.w5_menu_bar)
+        self.w5_menu_cadastros = QMenu('Cadastros', self)
+        self.w5_menu_bar.addMenu(self.w5_menu_cadastros)
+        self.w5_acao_entregadores = QAction('Entregadores', self)
+        self.w5_menu_cadastros.addAction(self.w5_acao_entregadores)
+        self.w5_acao_tiposdefesta = QAction('Tipos de Festa', self)
+        self.w5_menu_cadastros.addAction(self.w5_acao_tiposdefesta)
+        self.w5_acao_locaisdefesta = QAction('Locais de Festa', self)
+        self.w5_menu_cadastros.addAction(self.w5_acao_locaisdefesta)
+
         # Widgets da janela
         self.w5_label_titulo_eventos = QLabel('Eventos Confirmados')
         self.w5_label_filtro_norcamento = QLabel('N° Orçamento:')
@@ -562,6 +604,17 @@ class MyWindow(QMainWindow):
         self.w5_button_remover_festa = MyButton('Remover Festa')
         self.w5_button_imprimir_festa = MyButton('Imprimir Festa')
         self.w5_button_impressoes = MyButton('Impressões')
+
+        # Propriedades dos Widgets
+        self.w5_input_filtro_data.setInputMask('00/00/0000')
+        self.w5_input_filtro_norcamento.setInputMask('000000')
+        self.w5_combobox_filtro_estado.addItem('Confirmado')
+        self.w5_combobox_filtro_estado.addItem('Entregue')
+        self.w5_combobox_filtro_estado.addItem('Recolhido')
+
+        # Ações dos Widgets
+        self.w5_acao_entregadores.triggered.connect(
+            lambda: show_w5_entregadores())
 
         # Layout da janela
         self.layout.addWidget(self.w5_label_titulo_eventos, 0, 0, 1, 12)
@@ -588,6 +641,61 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w5_button_impressoes, 5, 0, 1, 12)
 
         self.showMaximized()
+
+    def w5_entregadores(self):
+
+        def add_entregador(table: MyTable, nome_entregador,
+                           telefone_entregador):
+            entregador = Entregador(None, nome_entregador.text(),
+                                    telefone_entregador.text())
+            entregador.add_to_sql()
+            table.tabela_entregadores(get_entregadores())
+            nome_entregador.setText('')
+            telefone_entregador.setText('')
+
+        def remove_entregador(table: MyTable):
+            id_entregador = table.item(table.currentRow(), 0).text()
+            nome_entregador = table.item(table.currentRow(), 1).text()
+            if self.confirm('Remover Entregador',
+                            f"""
+Tem certeza que deseja remover o entregador {nome_entregador}?
+                            """):
+                entregadores = get_entregadores()
+                entregadores[int(id_entregador)].remove_from_sql()
+                table.tabela_entregadores(get_entregadores())
+
+        self.w5_label_entregadores = QLabel('Entregadores')
+        self.w5_label_novo_entregador = QLabel('Entregador:')
+        self.w5_input_novo_entregador = QLineEdit()
+        self.w5_label_telefone_entregador = QLabel('Telefone:')
+        self.w5_input_telefone_entregador = QLineEdit()
+        self.w5_button_novo_entregador = MyButton('Novo Entregador')
+        self.w5_table_entregadores = MyTable()
+        self.w5_button_remove_entregador = MyButton('Remover Entregador')
+
+        self.w5_input_telefone_entregador.setInputMask('(00) 00000-0000')
+
+        self.w5_table_entregadores.tabela_entregadores(get_entregadores())
+        self.w5_button_novo_entregador.clicked.connect(
+            lambda: add_entregador(self.w5_table_entregadores,
+                                   self.w5_input_novo_entregador,
+                                   self.w5_input_telefone_entregador)
+        )
+        self.w5_button_remove_entregador.clicked.connect(
+            lambda: remove_entregador(self.w5_table_entregadores)
+        )
+
+        self.layout.addWidget(self.w5_label_entregadores, 0, 0, 1, 12)
+        self.layout.addWidget(self.w5_label_novo_entregador, 1, 0, 1, 3)
+        self.layout.addWidget(self.w5_input_novo_entregador, 1, 3, 1, 3)
+        self.layout.addWidget(self.w5_label_telefone_entregador, 1, 6, 1, 3)
+        self.layout.addWidget(self.w5_input_telefone_entregador, 1, 9, 1, 3)
+        self.layout.addWidget(self.w5_button_novo_entregador, 2, 0, 1, 12)
+        self.layout.addWidget(self.w5_table_entregadores, 3, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_remove_entregador, 4, 0, 1, 12)
+
+        self.resize(800, 600)
+        self.show()
 
 
 if __name__ == "__main__":

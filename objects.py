@@ -79,6 +79,48 @@ class Categoria():
         conn_tw.commit()
 
 
+class Festa():
+    def __init__(self, numero, data, local, tipo, qtd_pessoas, qtd_alcoolicos,
+                 estado) -> None:
+        self.numero = numero
+        self.data = data
+        self.local = local
+        self.tipo = tipo
+        self.qtd_pessoas = qtd_pessoas
+        self.qtd_alcoolicos = qtd_alcoolicos
+        self.produtos = None
+        self.consumo = None
+        self.avaria = None
+        self.locacao = None
+        self.estado = estado
+
+
+class Entregador():
+    def __init__(self, id, nome, telefone) -> None:
+        self.id = id
+        self.nome = nome
+        self.telefone = telefone
+
+    def add_to_sql(self):
+        cur_tw.execute(
+            f"""
+            INSERT INTO ENTREGADORES (NOME, TELEFONE)
+            VALUES
+            ('{self.nome}','{self.telefone}')
+            """
+        )
+        conn_tw.commit()
+
+    def remove_from_sql(self):
+        cur_tw.execute(
+            f"""
+            DELETE FROM ENTREGADORES
+            WHERE ID = {self.id}
+            """
+        )
+        conn_tw.commit()
+
+
 def get_usuarios():
     usuarios = {}
     cur_tw.execute(
@@ -178,6 +220,19 @@ def get_categorias():
     for categoria in select:
         categorias[categoria[0]] = Categoria(categoria[0])
     return categorias
+
+
+def get_entregadores():
+    entregadores = {}
+    cur_tw.execute(
+        """
+        SELECT ID, NOME, TELEFONE FROM ENTREGADORES
+        """
+    )
+    select = cur_tw.fetchall()
+    for i in select:
+        entregadores[i[0]] = Entregador(i[0], i[1], i[2])
+    return entregadores
 
 
 if __name__ == "__main__":
