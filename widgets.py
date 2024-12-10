@@ -10,8 +10,9 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QTableWidget, QTableWidgetItem, QWidget)
 
 from database_connection import conn_tw, cur_tw
-from objects import (Categoria, Entregador, Usuario, caminho_images,
-                     get_categorias, get_entregadores, get_produtos,
+from objects import (Categoria, Entregador, LocalFesta, TipoFesta, Usuario,
+                     caminho_images, get_categorias, get_entregadores,
+                     get_locais_festa, get_produtos, get_tipos_festa,
                      get_usuarios)
 
 
@@ -134,6 +135,53 @@ class MyTable(QTableWidget):
                 item2 = QTableWidgetItem(str(lista[i].nome))
                 item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
                 item3 = QTableWidgetItem(str(lista[i].telefone))
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_tipos_festa(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(2)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 150)
+            self.setHorizontalHeaderLabels(['Id', 'Nome'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].id))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(str(lista[i].nome))
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_locais_festa(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(3)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 150)
+            self.setHorizontalHeaderLabels(['Id', 'Nome', 'Contato'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].id))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(str(lista[i].nome))
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                item3 = QTableWidgetItem(str(lista[i].contato))
                 item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
                 self.setItem(numero, 0, item1)
                 self.setItem(numero, 1, item2)
@@ -569,6 +617,14 @@ class MyWindow(QMainWindow):
             self.w5_e = MyWindow('Entregadores', usuario=self.usuario)
             self.w5_e.w5_entregadores()
 
+        def show_w5_tipos_festa():
+            self.w5_tf = MyWindow('Tipos de Festa', usuario=self.usuario)
+            self.w5_tf.w5_tipos_de_festa()
+
+        def show_w5_locais_festa():
+            self.w5_lf = MyWindow('Locais de Festa', usuario=self.usuario)
+            self.w5_lf.w5_locais_de_festa()
+
         # Menu da janela
         self.w5_menu_bar = QMenuBar(self)
         self.setMenuBar(self.w5_menu_bar)
@@ -615,6 +671,12 @@ class MyWindow(QMainWindow):
         # Ações dos Widgets
         self.w5_acao_entregadores.triggered.connect(
             lambda: show_w5_entregadores())
+        self.w5_acao_tiposdefesta.triggered.connect(
+            lambda: show_w5_tipos_festa()
+        )
+        self.w5_acao_locaisdefesta.triggered.connect(
+            lambda: show_w5_locais_festa()
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w5_label_titulo_eventos, 0, 0, 1, 12)
@@ -693,6 +755,199 @@ Tem certeza que deseja remover o entregador {nome_entregador}?
         self.layout.addWidget(self.w5_button_novo_entregador, 2, 0, 1, 12)
         self.layout.addWidget(self.w5_table_entregadores, 3, 0, 1, 12)
         self.layout.addWidget(self.w5_button_remove_entregador, 4, 0, 1, 12)
+
+        self.resize(800, 600)
+        self.show()
+
+    def w5_tipos_de_festa(self):
+
+        def add_tipo_festa(input, table: MyTable):
+            nome_tipo_festa = input.text()
+            novo_tipo_festa = TipoFesta(None, nome_tipo_festa)
+            novo_tipo_festa.add_to_sql()
+            table.tabela_tipos_festa(get_tipos_festa())
+            input.setText('')
+
+        def remove_tipo_festa(table: MyTable):
+            id_tipo_festa = table.item(table.currentRow(), 0).text()
+            nome_tipo_festa = table.item(table.currentRow(), 1).text()
+            if self.confirm('Remover Tipo de Festa',
+                            f"""
+Deseja remover o tipo de festa {nome_tipo_festa}?
+                            """):
+                tipos_festa = get_tipos_festa()
+                tipos_festa[int(id_tipo_festa)].remove_from_sql()
+                table.tabela_tipos_festa(get_tipos_festa())
+
+        self.w5_label_tipo_festa = QLabel('Tipos de festas')
+        self.w5_label_novo_tipo_festa = QLabel('Novo Tipo de Festa:')
+        self.w5_input_novo_tipo_festa = QLineEdit()
+        self.w5_button_novo_tipo_festa = MyButton(
+            'Adicionar Tipo de Festa')
+        self.w5_table_tipos_festa = MyTable()
+        self.w5_button_remove_tipo_festa = MyButton(
+            'Remover Tipo de Festa')
+
+        self.w5_table_tipos_festa.tabela_tipos_festa(get_tipos_festa())
+        self.w5_button_novo_tipo_festa.clicked.connect(
+            lambda: add_tipo_festa(self.w5_input_novo_tipo_festa,
+                                   self.w5_table_tipos_festa)
+        )
+        self.w5_button_remove_tipo_festa.clicked.connect(
+            lambda: remove_tipo_festa(self.w5_table_tipos_festa)
+        )
+
+        self.layout.addWidget(self.w5_label_tipo_festa, 0, 0, 1, 12)
+        self.layout.addWidget(self.w5_label_novo_tipo_festa, 1, 0, 1, 4)
+        self.layout.addWidget(self.w5_input_novo_tipo_festa, 1, 4, 1, 4)
+        self.layout.addWidget(self.w5_button_novo_tipo_festa, 1, 8, 1, 4)
+        self.layout.addWidget(self.w5_table_tipos_festa, 2, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_remove_tipo_festa, 3, 0, 1, 12)
+
+        self.resize(800, 600)
+        self.show()
+
+    def w5_locais_de_festa(self):
+
+        def show_local_screen(table):
+            self.win = MyWindow('Locais de Festa', usuario=self.usuario)
+            self.win.w5_add_local_festa(table)
+
+        def show_edit_local_screen(table):
+            id_to_change = table.item(table.currentRow(), 0).text()
+            self.win = MyWindow('Locais de Festa', usuario=self.usuario)
+            self.win.w5_add_local_festa(table, id_to_change)
+
+        def remove_local_festa(table: MyTable):
+            id_local_festa = table.item(table.currentRow(), 0).text()
+            nome_local_festa = table.item(table.currentRow(), 1).text()
+            if self.confirm('Remover Local de Festa', f"""
+            Deseja Remover o local de festas {nome_local_festa}?
+            """):
+                locais_festa = get_locais_festa()
+                locais_festa[int(id_local_festa)].remove_from_sql()
+                table.tabela_locais_festa(get_locais_festa())
+
+        self.w5_label_locais_de_festa = QLabel('Locais de Festa')
+        self.w5_button_novo_local_festa = MyButton('Novo Local de Festa')
+        self.w5_table_locais_festa = MyTable()
+        self.w5_button_editar_local_festa = MyButton('Editar Local de Festa')
+        self.w5_button_remove_local_festa = MyButton('Remover Local de Festa')
+
+        self.w5_table_locais_festa.tabela_locais_festa(get_locais_festa())
+        self.w5_button_novo_local_festa.clicked.connect(
+            lambda: show_local_screen(self.w5_table_locais_festa)
+        )
+        self.w5_button_editar_local_festa.clicked.connect(
+            lambda: show_edit_local_screen(self.w5_table_locais_festa)
+        )
+        self.w5_button_remove_local_festa.clicked.connect(
+            lambda: remove_local_festa(self.w5_table_locais_festa)
+        )
+
+        self.layout.addWidget(self.w5_label_locais_de_festa, 0, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_novo_local_festa, 1, 0, 1, 12)
+        self.layout.addWidget(self.w5_table_locais_festa, 2, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_editar_local_festa, 3, 0, 1, 6)
+        self.layout.addWidget(self.w5_button_remove_local_festa, 3, 6, 1, 6)
+
+        self.resize(800, 600)
+        self.show()
+
+    def w5_add_local_festa(self, table: MyTable, id=None):
+
+        def add_local_festa(table: MyTable, input_nome, input_contato,
+                            input_logradouro,
+                            input_numero, input_bairro, input_cidade,
+                            input_cep, id):
+            if input_nome.text() != '':
+                if id is None:
+                    local_to_add = LocalFesta(None, input_nome.text(),
+                                              input_contato.text(),
+                                              input_logradouro.text(),
+                                              input_numero.text(),
+                                              input_bairro.text(),
+                                              input_cep.text(),
+                                              input_cidade.text())
+                    local_to_add.add_to_sql()
+                else:
+                    local_to_add = LocalFesta(id, input_nome.text(),
+                                              input_contato.text(),
+                                              input_logradouro.text(),
+                                              input_numero.text(),
+                                              input_bairro.text(),
+                                              input_cep.text(),
+                                              input_cidade.text())
+                    local_to_add.update_sql()
+                table.tabela_locais_festa(get_locais_festa())
+
+        self.w5_label_novo_local_de_festa = QLabel('Novo Local:')
+        self.w5_input_novo_local_de_festa = QLineEdit()
+        self.w5_label_contato_local_festa = QLabel('Contato:')
+        self.w5_input_contato_local_festa = QLineEdit()
+        self.w5_label_logradouro_local_festa = QLabel('Logradouro:')
+        self.w5_input_logradouro_local_festa = QLineEdit()
+        self.w5_label_numero_local = QLabel('Número:')
+        self.w5_input_numero_local = QLineEdit()
+        self.w5_label_bairro_local = QLabel('Bairro:')
+        self.w5_input_bairro_local = QLineEdit()
+        self.w5_label_cidade_local = QLabel('Cidade:')
+        self.w5_input_cidade_local = QLineEdit()
+        self.w5_label_cep_local = QLabel('CEP:')
+        self.w5_input_cep_local = QLineEdit()
+        self.w5_button_confirmar_novo_local = MyButton('Confirmar')
+        self.w5_button_cancelar_novo_local = MyButton('Cancelar')
+
+        self.w5_input_contato_local_festa.setInputMask('(00) 00000-0000')
+        self.w5_input_cep_local.setInputMask('00000-000')
+
+        if id is not None:
+            int_id = int(id)
+            locais_festa = get_locais_festa()
+            self.w5_input_novo_local_de_festa.setText(
+                locais_festa[int_id].nome)
+            self.w5_input_contato_local_festa.setText(
+                locais_festa[int_id].contato)
+            self.w5_input_logradouro_local_festa.setText(
+                locais_festa[int_id].logradouro)
+            self.w5_input_numero_local.setText(locais_festa[int_id].numero)
+            self.w5_input_bairro_local.setText(locais_festa[int_id].bairro)
+            self.w5_input_cidade_local.setText(locais_festa[int_id].cidade)
+            self.w5_input_cep_local.setText(locais_festa[int_id].cep)
+
+        self.w5_button_confirmar_novo_local.clicked.connect(
+            lambda: add_local_festa(table, self.w5_input_novo_local_de_festa,
+                                    self.w5_input_contato_local_festa,
+                                    self.w5_input_logradouro_local_festa,
+                                    self.w5_input_numero_local,
+                                    self.w5_input_bairro_local,
+                                    self.w5_input_cidade_local,
+                                    self.w5_input_cep_local,
+                                    id)
+        )
+        self.w5_button_confirmar_novo_local.clicked.connect(
+            lambda: self.close()
+        )
+        self.w5_button_cancelar_novo_local.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.w5_label_novo_local_de_festa, 0, 0, 1, 2)
+        self.layout.addWidget(self.w5_input_novo_local_de_festa, 0, 2, 1, 10)
+        self.layout.addWidget(self.w5_label_contato_local_festa, 1, 0, 1, 2)
+        self.layout.addWidget(self.w5_input_contato_local_festa, 1, 2, 1, 10)
+        self.layout.addWidget(self.w5_label_logradouro_local_festa, 2, 0, 1, 2)
+        self.layout.addWidget(self.w5_input_logradouro_local_festa, 2, 2, 1, 6)
+        self.layout.addWidget(self.w5_label_numero_local, 2, 8, 1, 1)
+        self.layout.addWidget(self.w5_input_numero_local, 2, 9, 1, 3)
+        self.layout.addWidget(self.w5_label_bairro_local, 3, 0, 1, 2)
+        self.layout.addWidget(self.w5_input_bairro_local, 3, 2, 1, 4)
+        self.layout.addWidget(self.w5_label_cep_local, 3, 6, 1, 2)
+        self.layout.addWidget(self.w5_input_cep_local, 3, 8, 1, 4)
+        self.layout.addWidget(self.w5_label_cidade_local, 4, 0, 1, 2)
+        self.layout.addWidget(self.w5_input_cidade_local, 4, 2, 1, 10)
+        self.layout.addWidget(self.w5_button_confirmar_novo_local, 5, 0, 1, 6)
+        self.layout.addWidget(self.w5_button_cancelar_novo_local, 5, 6, 1, 6)
 
         self.resize(800, 600)
         self.show()
