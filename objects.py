@@ -1,3 +1,4 @@
+import datetime
 import os
 
 from database_connection import conn_tw, cur_mc, cur_tw
@@ -32,7 +33,7 @@ class Usuario():
 
 
 class Produto():
-    def __init__(self, codigo, nome, ref, preco,
+    def __init__(self, codigo=None, nome=None, ref=None, preco=None,
                  image=caminho_images+'\\bebida.jpg',
                  quantidade=1, categoria='Não Definido') -> None:
         self.codigo = codigo
@@ -80,19 +81,90 @@ class Categoria():
 
 
 class Festa():
-    def __init__(self, numero, data, local, tipo, qtd_pessoas, qtd_alcoolicos,
-                 estado) -> None:
+    def __init__(self, numero, confirmada=False) -> None:
         self.numero = numero
-        self.data = data
-        self.local = local
-        self.tipo = tipo
-        self.qtd_pessoas = qtd_pessoas
-        self.qtd_alcoolicos = qtd_alcoolicos
-        self.produtos = None
+        self.nome = None
+        self.data = None
+        self.local = None
+        self.tipo = None
+        self.qtd_pessoas = None
+        self.qtd_alcoolicos = None
+        self.produtos = {}
         self.consumo = None
         self.avaria = None
         self.locacao = None
-        self.estado = estado
+        self.estado = None
+
+        cur_mc.execute(
+            f"""
+            SELECT AC190_NOMECLI, AN190_CLIENTE, AC190_TELEFONE FROM
+            MC190_ORCAMENTO
+            WHERE AN190_PEDIDO = {self.numero}
+            """
+        )
+        select0 = cur_mc.fetchone()
+        self.nome = select0[0]
+        if select0[1] != 0:
+            cur_mc.execute(
+                f"""
+                SELECT MC01FONE, MC01CELULAR
+                FROM MC01CLIENTE
+                WHERE MC01CODIGO = {select0[1]}
+                """
+            )
+            select_fones = cur_mc.fetchone()
+            self.telefone = select_fones[0]
+            self.celular = select_fones[1]
+            self.cadastrado = True
+        else:
+            self.telefone = select0[2]
+            self.celular = None
+            self.cadastrado = False
+
+        cur_tw.execute(f"""
+            SELECT DATA, LOCAL, TIPO, QTD_PESSOAS, QTD_ALCOOLICOS
+            FROM FESTAS WHERE N_ORCAMENTO = {self.numero}
+        """)
+        select1 = cur_tw.fetchall()
+        if select1[0][0] is not None:
+            self.data = datetime.datetime.strptime(select1[0][0], "%Y-%m-%d")
+        self.local = select1[0][1]
+        self.tipo = select1[0][2]
+        self.qtd_pessoas = select1[0][3]
+        self.qtd_alcoolicos = select1[0][4]
+
+        if confirmada:
+            cur_tw.execute(f"""
+                SELECT ESTADO, CONSUMO, LOCACAO, AVARIA
+                FROM FESTAS_CONFIRMADAS WHERE N_ORCAMENTO = {self.numero}
+            """)
+            select2 = cur_tw.fetchall()
+            self.estado = select2[0][0]
+            self.consumo = select2[0][1]
+            self.locacao = select2[0][2]
+            self.avaria = select2[0][3]
+
+        cur_mc.execute(
+            f"""
+            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR
+            FROM MC191_ITEMORCAMENTO
+            WHERE AN191_PEDIDO = {self.numero}
+            """
+        )
+        select3 = cur_mc.fetchall()
+        for item in select3:
+            self.produtos[item[0]] = []
+            self.produtos[item[0]].append(item[0])
+            cur_mc.execute(f"""
+                SELECT AC03DESC, AC03REF
+                FROM MC03PRO
+                WHERE AC03CODI = '{item[0]}'
+            """)
+            select_produtos1 = cur_mc.fetchone()
+            self.produtos[item[0]].append(select_produtos1[0])
+            self.produtos[item[0]].append(select_produtos1[1])
+            self.produtos[item[0]].append(float(item[1]))
+            self.produtos[item[0]].append(float(item[2]))
 
 
 class Entregador():
@@ -365,8 +437,19 @@ def get_locais_festa():
     return locais_festa
 
 
-if __name__ == "__main__":
-    with open('images/bebida.jpg', 'rb') as arquivo:
-        image = arquivo.read()
+def get_festas_confirmadas():
+    festas_confirmadas = {}
+    cur_tw.execute("""
+        SELECT DISTINCT N_ORCAMENTO
+        FROM FESTAS_CONFIRMADAS
+    """)
+    select = cur_tw.fetchall()
+    for festa in select:
+        festas_confirmadas[festa[0]] = Festa(festa[0])
+    return festas_confirmadas
 
-    print(len(str(image)))
+
+if __name__ == "__main__":
+    festa = Festa(11923)
+    for produto in festa.produtos:
+        print(festa.produtos[produto])

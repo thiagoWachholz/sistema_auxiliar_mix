@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QTableWidget, QTableWidgetItem, QWidget)
 
 from database_connection import conn_tw, cur_tw
-from objects import (Categoria, Entregador, LocalFesta, TipoFesta, Usuario,
-                     caminho_images, get_categorias, get_entregadores,
-                     get_locais_festa, get_produtos, get_tipos_festa,
-                     get_usuarios)
+from objects import (Categoria, Entregador, Festa, LocalFesta, TipoFesta,
+                     Usuario, caminho_images, get_categorias, get_entregadores,
+                     get_festas_confirmadas, get_locais_festa, get_produtos,
+                     get_tipos_festa, get_usuarios)
 
 
 class MyTable(QTableWidget):
@@ -186,6 +186,88 @@ class MyTable(QTableWidget):
                 self.setItem(numero, 0, item1)
                 self.setItem(numero, 1, item2)
                 self.setItem(numero, 2, item3)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_festas_confirmadas(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(5)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 300)
+            self.setHorizontalHeaderLabels(
+                ['Número', 'Data', 'Local', 'Nome', 'Estado'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].numero))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                if lista[i].data is not None:
+                    dia = lista[i].data.day
+                    mes = lista[i].data.month
+                    ano = lista[i].data.year
+                    data_orcamento = f'{dia}/{mes}/{ano}'
+                else:
+                    data_orcamento = None
+                item2 = QTableWidgetItem(data_orcamento)
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                item3 = QTableWidgetItem(str(lista[i].local))
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+                item4 = QTableWidgetItem(str(lista[i].nome))
+                item4.setFlags(item4.flags() & ~Qt.ItemIsEditable)
+                item5 = QTableWidgetItem(str(lista[i].estado))
+                item5.setFlags(item5.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
+                self.setItem(numero, 3, item4)
+                self.setItem(numero, 4, item5)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_produtos_festa(self, n_orcamento=None):
+        if n_orcamento is None:
+            lista = []
+        else:
+            lista = Festa(n_orcamento).produtos
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(6)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 280)
+            self.setHorizontalHeaderLabels(
+                ['Código', 'Descrição', 'Referência', 'Quantidade',
+                 'Valor Unitário', 'Valor Total'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(lista[i][0])
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(lista[i][1])
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                item3 = QTableWidgetItem(lista[i][2])
+                item3.setFlags(item3.flags() & ~Qt.ItemIsEditable)
+                item4 = QTableWidgetItem(str(lista[i][3]).replace('.', ','))
+                item4.setFlags(item4.flags() & ~Qt.ItemIsEditable)
+                item5 = QTableWidgetItem(
+                    (f'R${lista[i][4]:.2f}').replace('.', ','))
+                item5.setFlags(item5.flags() & ~Qt.ItemIsEditable)
+                valor_total = lista[i][3] * lista[i][4]
+                item6 = QTableWidgetItem(
+                    (f'R${valor_total:.2f}').replace('.', ','))
+                item6.setFlags(item6.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
+                self.setItem(numero, 2, item3)
+                self.setItem(numero, 3, item4)
+                self.setItem(numero, 4, item5)
+                self.setItem(numero, 5, item6)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -625,6 +707,15 @@ class MyWindow(QMainWindow):
             self.w5_lf = MyWindow('Locais de Festa', usuario=self.usuario)
             self.w5_lf.w5_locais_de_festa()
 
+        def show_w6_festa(table=None):
+            n_orcamento = None
+            if table is not None:
+                n_orcamento = table.item(table.currentRow(), 0).text()
+                n_orcamento = int(n_orcamento)
+
+            self.w6_f = MyWindow('Festa', usuario=self.usuario)
+            self.w6_f.w6_festa(n_orcamento=n_orcamento)
+
         # Menu da janela
         self.w5_menu_bar = QMenuBar(self)
         self.setMenuBar(self.w5_menu_bar)
@@ -669,6 +760,9 @@ class MyWindow(QMainWindow):
         self.w5_combobox_filtro_estado.addItem('Recolhido')
 
         # Ações dos Widgets
+        self.w5_table_eventos_confirmados.tabela_festas_confirmadas(
+            get_festas_confirmadas()
+        )
         self.w5_acao_entregadores.triggered.connect(
             lambda: show_w5_entregadores())
         self.w5_acao_tiposdefesta.triggered.connect(
@@ -676,6 +770,12 @@ class MyWindow(QMainWindow):
         )
         self.w5_acao_locaisdefesta.triggered.connect(
             lambda: show_w5_locais_festa()
+        )
+        self.w5_button_consultar_festa.clicked.connect(
+            lambda: show_w6_festa(self.w5_table_eventos_confirmados)
+        )
+        self.w5_button_adicionar_festa.clicked.connect(
+            lambda: show_w6_festa()
         )
 
         # Layout da janela
@@ -951,6 +1051,203 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
 
         self.resize(800, 600)
         self.show()
+
+    def w6_festa(self, n_orcamento=None):
+
+        def att_janela(festa, label):
+            if n_orcamento is not None:
+                valor_total = 0
+                produtos = festa.produtos
+                for produto in festa.produtos:
+                    total_produto = produtos[produto][3] * produtos[produto][4]
+                    valor_total += total_produto
+                label.setText(
+                    (f'Valor Total: R${valor_total:.2f}').replace('.', ',')
+                )
+
+        # Widgets da janela
+        self.w6_label_n_orcamento = QLabel(
+            f'Número do Orçamento: {n_orcamento}')
+        self.w6_label_nome_cliente = QLabel('Nome do Cliente:')
+        self.w6_input_nome_cliente = QLineEdit()
+        self.w6_button_clientes = QPushButton('Clientes')
+        self.w6_label_telefone_cliente = QLabel('Telefone do Cliente:')
+        self.w6_input_telefone_cliente = QLineEdit()
+        self.w6_label_celular_cliente = QLabel('Celular do Cliente:')
+        self.w6_input_celular_cliente = QLineEdit()
+        self.w6_label_data_evento = QLabel('Data do Evento:')
+        self.w6_input_data_evento = QLineEdit()
+        self.w6_label_local_evento = QLabel('Local do Evento:')
+        self.w6_button_local_evento = QPushButton('Locais de Evento')
+        self.w6_input_cod_local_evento = QLineEdit()
+        self.w6_input_local_evento = QLineEdit()
+        self.w6_label_tipo_festa = QLabel('Tipo de Festa:')
+        self.w6_button_tipo_festa = QPushButton('Tipos de Festa')
+        self.w6_input_cod_tipo_festa = QLineEdit()
+        self.w6_input_tipo_festa = QLineEdit()
+        self.w6_label_qtd_pessoas = QLabel('Quantidade de Pessoas:')
+        self.w6_input_qtd_pessoas = QLineEdit()
+        self.w6_label_qtd_alcoolicos = QLabel(
+            'Pessoas que bebem bebida alcoólica:')
+        self.w6_input_qtd_alcoolicos = QLineEdit()
+        self.w6_label_quebra = QLabel(370*'-')
+        self.w6_label_produtos = QLabel('Produtos')
+        self.w6_label_cod_produto = QLabel('Código:')
+        self.w6_button_cod_produto = QPushButton('Produtos')
+        self.w6_input_cod_produto = QLineEdit()
+        self.w6_label_nome_produto = QLabel()
+        self.w6_label_quantidade_produto = QLabel('Quantidade:')
+        self.w6_input_quantidade_produto = QLineEdit()
+        self.w6_checkbox_consignado = QCheckBox('Consignado')
+        self.w6_label_valor_produto = QLabel('Valor:')
+        self.w6_input_valor_produto = QLineEdit()
+        self.w6_button_adicionar_produto = MyButton('Adicionar Produto')
+        self.w6_button_remover_produto = MyButton('Remover Produto')
+        self.w6_table_produtos = MyTable()
+        self.w6_label_valor_total = QLabel('Valor total:')
+        self.w6_label_consumo = QLabel('Consumo:')
+        self.w6_input_consumo = QLineEdit()
+        self.w6_button_carregar_consumo = MyButton('Carregar Consumo')
+        self.w6_button_consultar_consumo = MyButton('Consultar Consumo')
+        self.w6_label_valor_consumo = QLabel('Valor Consumo:')
+        self.w6_label_locacao = QLabel('Locação:')
+        self.w6_input_locacao = QLineEdit()
+        self.w6_button_carregar_locacao = MyButton('Carregar Locação')
+        self.w6_button_consultar_locacao = MyButton('Consultar Locação')
+        self.w6_label_valor_locacao = QLabel('Valor Locação:')
+        self.w6_label_avaria = QLabel('Avaria:')
+        self.w6_input_avaria = QLineEdit()
+        self.w6_button_carregar_avaria = MyButton('Carregar Avaria')
+        self.w6_button_consultar_avaria = MyButton('Consultar Avaria')
+        self.w6_label_valor_avaria = QLabel('Valor Avaria:')
+        self.w6_label_entregador = QLabel('Entregador:')
+        self.w6_button_entregador = QPushButton('Entregadores')
+        self.w6_input_cod_entregador = QLineEdit()
+        self.w6_input_entregador = QLineEdit()
+        self.w6_label_recolhedor = QLabel('Recolhedor:')
+        self.w6_button_recolhedor = QPushButton('Entregadores')
+        self.w6_input_cod_recolhedor = QLineEdit()
+        self.w6_input_recolhedor = QLineEdit()
+        self.w6_checkbox_festa_confirmada = QCheckBox('Festa Confirmada')
+        self.w6_button_confirmar = MyButton('Confirmar')
+        self.w6_button_sair = MyButton('Sair')
+
+        # Propriedades do Widgets
+        self.w6_label_telefone_cliente.setAlignment(Qt.AlignRight)
+        self.w6_label_local_evento.setAlignment(Qt.AlignRight)
+        self.w6_label_qtd_pessoas.setAlignment(Qt.AlignRight)
+        self.w6_label_quantidade_produto.setAlignment(Qt.AlignRight)
+        self.w6_label_valor_produto.setAlignment(Qt.AlignRight)
+        self.w6_label_valor_total.setAlignment(Qt.AlignRight)
+        self.w6_input_cod_entregador.setPlaceholderText('Código')
+        self.w6_input_cod_local_evento.setPlaceholderText('Código')
+        self.w6_input_cod_produto.setPlaceholderText('Código')
+        self.w6_input_cod_recolhedor.setPlaceholderText('Código')
+        self.w6_input_cod_tipo_festa.setPlaceholderText('Código')
+        if n_orcamento is not None:
+            festa_atual = Festa(n_orcamento)
+            self.w6_input_nome_cliente.setText(festa_atual.nome)
+            self.w6_input_telefone_cliente.setText(festa_atual.telefone)
+            self.w6_input_celular_cliente.setText(festa_atual.celular)
+            if festa_atual.cadastrado:
+                self.w6_input_telefone_cliente.setReadOnly(True)
+            self.w6_input_celular_cliente.setReadOnly(True)
+            if festa_atual.data is not None:
+                dia = festa_atual.data.day
+                mes = festa_atual.data.month
+                ano = festa_atual.data.year
+                data_evento = f'{dia}/{mes}/{ano}'
+            else:
+                data_evento = None
+            self.w6_input_data_evento.setText(data_evento)
+            locais_festa = get_locais_festa()
+            for local in locais_festa:
+                if festa_atual.local == locais_festa[local].nome:
+                    self.w6_input_cod_local_evento.setText(str(local))
+                    self.w6_input_local_evento.setReadOnly(True)
+            self.w6_input_local_evento.setText(festa_atual.local)
+            del locais_festa
+            tipos_festa = get_tipos_festa()
+            for tipo in tipos_festa:
+                if festa_atual.tipo == tipos_festa[tipo].nome:
+                    self.w6_input_cod_tipo_festa.setText(str(tipo))
+                    self.w6_input_tipo_festa.setReadOnly(True)
+            self.w6_input_tipo_festa.setText(festa_atual.tipo)
+            del tipos_festa
+            self.w6_input_qtd_pessoas.setText(str(festa_atual.qtd_pessoas))
+            self.w6_input_qtd_alcoolicos.setText(
+                str(festa_atual.qtd_alcoolicos))
+            att_janela(festa_atual, self.w6_label_valor_total)
+
+        # Ações dos Widgets
+        self.w6_table_produtos.tabela_produtos_festa(n_orcamento=n_orcamento)
+
+        # Layout da janela
+        self.layout.addWidget(self.w6_label_n_orcamento, 0, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_nome_cliente, 1, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_nome_cliente, 1, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_clientes, 1, 2, 1, 1)
+        self.layout.addWidget(self.w6_label_telefone_cliente, 1, 3, 1, 1)
+        self.layout.addWidget(self.w6_input_telefone_cliente, 1, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_celular_cliente, 1, 5, 1, 1)
+        self.layout.addWidget(self.w6_input_celular_cliente, 1, 6, 1, 1)
+        self.layout.addWidget(self.w6_label_data_evento, 2, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_data_evento, 2, 1, 1, 1)
+        self.layout.addWidget(self.w6_label_local_evento, 2, 2, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_local_evento, 2, 3, 1, 1)
+        self.layout.addWidget(self.w6_button_local_evento, 2, 4, 1, 1)
+        self.layout.addWidget(self.w6_input_local_evento, 2, 5, 1, 8)
+        self.layout.addWidget(self.w6_label_tipo_festa, 3, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_tipo_festa, 3, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_tipo_festa, 3, 2, 1, 1)
+        self.layout.addWidget(self.w6_input_tipo_festa, 3, 3, 1, 3)
+        self.layout.addWidget(self.w6_label_qtd_pessoas, 3, 6, 1, 1)
+        self.layout.addWidget(self.w6_input_qtd_pessoas, 3, 7, 1, 2)
+        self.layout.addWidget(self.w6_label_qtd_alcoolicos, 3, 9, 1, 1)
+        self.layout.addWidget(self.w6_input_qtd_alcoolicos, 3, 10, 1, 2)
+        self.layout.addWidget(self.w6_label_quebra, 4, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_produtos, 5, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_cod_produto, 6, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_produto, 6, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_cod_produto, 6, 2, 1, 1)
+        self.layout.addWidget(self.w6_label_nome_produto, 6, 3, 1, 2)
+        self.layout.addWidget(self.w6_label_quantidade_produto, 6, 5, 1, 1)
+        self.layout.addWidget(self.w6_input_quantidade_produto, 6, 6, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_produto, 6, 7, 1, 1)
+        self.layout.addWidget(self.w6_input_valor_produto, 6, 8, 1, 1)
+        self.layout.addWidget(self.w6_checkbox_consignado, 6, 9, 1, 1)
+        self.layout.addWidget(self.w6_button_adicionar_produto, 6, 10, 1, 1)
+        self.layout.addWidget(self.w6_button_remover_produto, 6, 11, 1, 1)
+        self.layout.addWidget(self.w6_table_produtos, 7, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_valor_total, 8, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_consumo, 9, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_consumo, 9, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_consumo, 9, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_consumo, 9, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_consumo, 9, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_locacao, 10, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_locacao, 10, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_locacao, 10, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_locacao, 10, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_locacao, 10, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_avaria, 11, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_avaria, 11, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_avaria, 11, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_avaria, 11, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_avaria, 11, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_entregador, 12, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_entregador, 12, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_entregador, 12, 2, 1, 1)
+        self.layout.addWidget(self.w6_input_entregador, 12, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_recolhedor, 12, 6, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_recolhedor, 12, 7, 1, 1)
+        self.layout.addWidget(self.w6_button_recolhedor, 12, 8, 1, 1)
+        self.layout.addWidget(self.w6_input_recolhedor, 12, 9, 1, 1)
+        self.layout.addWidget(self.w6_checkbox_festa_confirmada, 13, 0, 1, 12)
+        self.layout.addWidget(self.w6_button_confirmar, 14, 0, 1, 6)
+        self.layout.addWidget(self.w6_button_sair, 14, 6, 1, 6)
+
+        self.showMaximized()
 
 
 if __name__ == "__main__":

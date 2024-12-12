@@ -173,6 +173,14 @@ conn_tw.commit()
 if __name__ == "__main__":
     cur_tw.execute(
         """
+        INSERT INTO FESTAS (N_ORCAMENTO)
+        VALUES (11925)
+        """
+    )
+    cur_tw.execute(
+        """
+        INSERT INTO FESTAS_CONFIRMADAS (N_ORCAMENTO)
+        VALUES (11925)
         """
     )
     conn_tw.commit()
