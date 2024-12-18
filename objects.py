@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from database_connection import conn_tw, cur_mc, cur_tw
+from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
 
 caminho_images = os.getcwd() + '\\images'
 
@@ -83,6 +83,7 @@ class Categoria():
 class Festa():
     def __init__(self, numero, confirmada=False) -> None:
         self.numero = numero
+        self.cod_cliente = None
         self.nome = None
         self.data = None
         self.local = None
@@ -97,13 +98,14 @@ class Festa():
 
         cur_mc.execute(
             f"""
-            SELECT AC190_NOMECLI, AN190_CLIENTE, AC190_TELEFONE FROM
-            MC190_ORCAMENTO
+            SELECT AC190_NOMECLI, AN190_CLIENTE, AC190_TELEFONE, AN190_CLIENTE
+            FROM MC190_ORCAMENTO
             WHERE AN190_PEDIDO = {self.numero}
             """
         )
         select0 = cur_mc.fetchone()
         self.nome = select0[0]
+        self.cod_cliente = select0[3]
         if select0[1] != 0:
             cur_mc.execute(
                 f"""
@@ -165,6 +167,39 @@ class Festa():
             self.produtos[item[0]].append(select_produtos1[1])
             self.produtos[item[0]].append(float(item[1]))
             self.produtos[item[0]].append(float(item[2]))
+
+    def get_produtos(self):
+        cur_mc.execute(
+            f"""
+            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR
+            FROM MC191_ITEMORCAMENTO
+            WHERE AN191_PEDIDO = {self.numero}
+            """
+        )
+        select3 = cur_mc.fetchall()
+        for item in select3:
+            self.produtos[item[0]] = []
+            self.produtos[item[0]].append(item[0])
+            cur_mc.execute(f"""
+                SELECT AC03DESC, AC03REF
+                FROM MC03PRO
+                WHERE AC03CODI = '{item[0]}'
+            """)
+            select_produtos1 = cur_mc.fetchone()
+            self.produtos[item[0]].append(select_produtos1[0])
+            self.produtos[item[0]].append(select_produtos1[1])
+            self.produtos[item[0]].append(float(item[1]))
+            self.produtos[item[0]].append(float(item[2]))
+
+    def remove_produto(self, codigo_produto):
+        cur_mc.execute(
+            f"""
+            DELETE FROM MC191_ITEMORCAMENTO
+            WHERE AN191_PEDIDO = {self.numero}
+            AND AC191_PRODUTO = '{codigo_produto}'
+            """
+        )
+        conn_mc.commit()
 
 
 class Entregador():
@@ -293,6 +328,26 @@ class LocalFesta():
         WHERE ID = {self.id};
         """)
         conn_tw.commit()
+
+
+class Cliente():
+    def __init__(self, cod) -> None:
+        self.codigo = cod
+        self.nome = None
+        self.telefone = None
+        self.celular = None
+
+        cur_mc.execute(
+            f"""
+            SELECT MC01NOME, MC01FONE, MC01CELULAR
+            FROM MC01CLIENTE
+            WHERE MC01CODIGO = {self.codigo}
+            """
+        )
+        select = cur_mc.fetchone()
+        self.nome = select[0]
+        self.telefone = select[1]
+        self.celular = select[2]
 
 
 def get_usuarios():
@@ -449,7 +504,23 @@ def get_festas_confirmadas():
     return festas_confirmadas
 
 
+def get_clientes(order_by='MC01CODIGO', like=''):
+    clientes = {}
+    cur_mc.execute(
+        f"""
+        SELECT MC01CODIGO
+        FROM MC01CLIENTE
+        WHERE 1=1
+        AND LOWER(MC01NOME) LIKE '%{like}%'
+        ORDER BY {order_by}
+        """
+    )
+    select = cur_mc.fetchall()
+    for cliente in select:
+        clientes[cliente[0]] = Cliente(cliente[0])
+    return clientes
+
+
 if __name__ == "__main__":
-    festa = Festa(11923)
-    for produto in festa.produtos:
-        print(festa.produtos[produto])
+    for produto in get_produtos():
+        print(produto)

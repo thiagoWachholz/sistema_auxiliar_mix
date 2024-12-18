@@ -3,17 +3,18 @@ import sqlite3
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QColor, QKeyEvent, QPixmap
+from PySide6.QtGui import QAction, QColor, QIntValidator, QKeyEvent, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QGridLayout, QLabel, QLineEdit, QMainWindow,
                                QMenu, QMenuBar, QMessageBox, QPushButton,
                                QTableWidget, QTableWidgetItem, QWidget)
 
-from database_connection import conn_tw, cur_tw
-from objects import (Categoria, Entregador, Festa, LocalFesta, TipoFesta,
-                     Usuario, caminho_images, get_categorias, get_entregadores,
-                     get_festas_confirmadas, get_locais_festa, get_produtos,
-                     get_tipos_festa, get_usuarios)
+from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
+from objects import (Categoria, Cliente, Entregador, Festa, LocalFesta,
+                     TipoFesta, Usuario, caminho_images, get_categorias,
+                     get_clientes, get_entregadores, get_festas_confirmadas,
+                     get_locais_festa, get_produtos, get_tipos_festa,
+                     get_usuarios)
 
 
 class MyTable(QTableWidget):
@@ -268,6 +269,29 @@ class MyTable(QTableWidget):
                 self.setItem(numero, 3, item4)
                 self.setItem(numero, 4, item5)
                 self.setItem(numero, 5, item6)
+        else:
+            self.setRowCount(1)
+            self.setColumnCount(1)
+            self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+
+    def tabela_clientes(self, lista):
+        if len(lista) >= 1:
+            self.clear()
+            self.setRowCount(len(lista))
+            for i in range(self.rowCount()):
+                self.setRowHeight(i, 20)
+            self.setColumnCount(2)
+            for i in range(self.columnCount()):
+                self.setColumnWidth(i, 150)
+            self.setColumnWidth(1, 350)
+            self.setHorizontalHeaderLabels(['Código', 'Nome'])
+            for numero, i in enumerate(lista):
+                item1 = QTableWidgetItem(str(lista[i].codigo))
+                item1.setFlags(item1.flags() & ~Qt.ItemIsEditable)
+                item2 = QTableWidgetItem(str(lista[i].nome))
+                item2.setFlags(item2.flags() & ~Qt.ItemIsEditable)
+                self.setItem(numero, 0, item1)
+                self.setItem(numero, 1, item2)
         else:
             self.setRowCount(1)
             self.setColumnCount(1)
@@ -755,6 +779,7 @@ class MyWindow(QMainWindow):
         # Propriedades dos Widgets
         self.w5_input_filtro_data.setInputMask('00/00/0000')
         self.w5_input_filtro_norcamento.setInputMask('000000')
+        self.w5_combobox_filtro_estado.addItem('Não Confirmado')
         self.w5_combobox_filtro_estado.addItem('Confirmado')
         self.w5_combobox_filtro_estado.addItem('Entregue')
         self.w5_combobox_filtro_estado.addItem('Recolhido')
@@ -1054,20 +1079,101 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
 
     def w6_festa(self, n_orcamento=None):
 
+        def show_wse(*args):
+            self.wse = MyWindow('Entregadores', usuario=self.usuario)
+            self.wse.w_search_entregadores(*args)
+
+        def show_wstf(*args):
+            self.wstf = MyWindow('Tipos de Festa', usuario=self.usuario)
+            self.wstf.w_search_tipos_festa(*args)
+
+        def show_wslf(*args):
+            self.wslf = MyWindow('Locais de Festa', usuario=self.usuario)
+            self.wslf.w_search_locais_festa(*args)
+
+        def show_wsp(*args):
+            self.wsp = MyWindow('Produtos', usuario=self.usuario)
+            self.wsp.w_search_produtos(*args)
+
+        def show_wsc(*args):
+            self.wsc = MyWindow('Clientes', usuario=self.usuario)
+            self.wsc.w_search_clientes(*args)
+
+        def att_input(input_cod, input_text, function):
+            input_text.setReadOnly(False)
+            input_text.setEnabled(True)
+            locais_festa = function()
+            print(locais_festa)
+            codigo_local = int(input_cod.text())
+            print(codigo_local)
+            if codigo_local in locais_festa:
+                input_text.setText(locais_festa[codigo_local].nome)
+                input_text.setReadOnly(True)
+                input_text.setEnabled(False)
+
         def att_janela(festa, label):
-            if n_orcamento is not None:
-                valor_total = 0
-                produtos = festa.produtos
-                for produto in festa.produtos:
-                    total_produto = produtos[produto][3] * produtos[produto][4]
-                    valor_total += total_produto
-                label.setText(
-                    (f'Valor Total: R${valor_total:.2f}').replace('.', ',')
-                )
+            valor_total = 0
+            produtos = festa.produtos
+            for produto in festa.produtos:
+                total_produto = produtos[produto][3] * produtos[produto][4]
+                valor_total += total_produto
+            label.setText(
+                (f'Valor Total: R${valor_total:.2f}').replace('.', ',')
+            )
+
+        def remove_produto(n_orcamento, table: MyTable):
+            nome_produto = table.item(table.currentRow(), 1).text()
+            if self.confirm('Remover Produto',
+                            f"""
+                Tem certeza que deseja remover {nome_produto}?
+            """):
+                cod_produto = table.item(table.currentRow(), 0).text()
+                festa = Festa(int(n_orcamento))
+                festa.remove_produto(cod_produto)
+                table.tabela_produtos_festa(int(n_orcamento))
+
+        def fill_produto_inputs(input_cod, input_prod, input_qtd, input_valor,
+                                checkbox_consignado):
+            produtos = get_produtos()
+            if input_cod.text() in produtos:
+                produto = produtos[input_cod.text()]
+                input_prod.setText(f'{produto.nome} {produto.ref}')
+                input_qtd.setText('1')
+                if checkbox_consignado.isChecked():
+                    input_valor.setText(f'{produto.preco_consignado}')
+                else:
+                    input_valor.setText(f'{produto.preco}')
+            else:
+                MyMessageBox('Produto não encontrado!')
+
+        def cod_produto_typed(input_cod, *args):
+            if len(input_cod.text()) == 7:
+                fill_produto_inputs(*args)
+
+        def add_produto_into_festa(table: MyTable, n_orcamento, input_cod,
+                                   input_name, input_qtd, input_valor):
+            cur_mc.execute(
+                f"""
+                INSERT INTO MC191_ITEMORCAMENTO
+                (AN191_PEDIDO, AC191_PRODUTO, AN191_QTDE, AN191_VALOR,
+                AC190_NOMEPRO, AN191_EMPRESA)
+                VALUES
+                ({n_orcamento},'{input_cod.text()}',{input_qtd.text()},
+                {input_valor.text()},'{input_name.text()}',0)
+                """
+            )
+            conn_mc.commit()
+            table.tabela_produtos_festa(n_orcamento)
+            input_cod.setText('')
+            input_name.setText('')
+            input_qtd.setText('')
+            input_valor.setText('')
+            input_cod.setFocus()
 
         # Widgets da janela
         self.w6_label_n_orcamento = QLabel(
             f'Número do Orçamento: {n_orcamento}')
+        self.w6_label_cod_cliente = QLabel('')
         self.w6_label_nome_cliente = QLabel('Nome do Cliente:')
         self.w6_input_nome_cliente = QLineEdit()
         self.w6_button_clientes = QPushButton('Clientes')
@@ -1095,7 +1201,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_label_cod_produto = QLabel('Código:')
         self.w6_button_cod_produto = QPushButton('Produtos')
         self.w6_input_cod_produto = QLineEdit()
-        self.w6_label_nome_produto = QLabel()
+        self.w6_input_nome_produto = QLabel()
         self.w6_label_quantidade_produto = QLabel('Quantidade:')
         self.w6_input_quantidade_produto = QLineEdit()
         self.w6_checkbox_consignado = QCheckBox('Consignado')
@@ -1144,13 +1250,27 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_input_cod_produto.setPlaceholderText('Código')
         self.w6_input_cod_recolhedor.setPlaceholderText('Código')
         self.w6_input_cod_tipo_festa.setPlaceholderText('Código')
+        self.w6_int_validator = QIntValidator()
+        self.w6_input_cod_local_evento.setValidator(self.w6_int_validator)
+        self.w6_input_celular_cliente.setEnabled(False)
+        self.w6_input_cod_produto.setInputMask('00.0000')
+        self.w6_input_data_evento.setInputMask('00/00/0000')
+        self.w6_input_qtd_pessoas.setInputMask('0000')
+        self.w6_input_qtd_alcoolicos.setInputMask('0000')
         if n_orcamento is not None:
             festa_atual = Festa(n_orcamento)
+            if festa_atual.cod_cliente != 0:
+                self.w6_label_cod_cliente.setText(
+                    f'Código: {festa_atual.cod_cliente}')
+                self.w6_input_nome_cliente.setEnabled(False)
+                self.w6_input_telefone_cliente.setEnabled(True)
             self.w6_input_nome_cliente.setText(festa_atual.nome)
             self.w6_input_telefone_cliente.setText(festa_atual.telefone)
             self.w6_input_celular_cliente.setText(festa_atual.celular)
             if festa_atual.cadastrado:
-                self.w6_input_telefone_cliente.setReadOnly(True)
+                self.w6_input_telefone_cliente.setEnabled(False)
+            else:
+                self.w6_input_telefone_cliente.setEnabled(True)
             self.w6_input_celular_cliente.setReadOnly(True)
             if festa_atual.data is not None:
                 dia = festa_atual.data.day
@@ -1178,19 +1298,90 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             self.w6_input_qtd_alcoolicos.setText(
                 str(festa_atual.qtd_alcoolicos))
             att_janela(festa_atual, self.w6_label_valor_total)
+            self.w6_input_nome_produto.setEnabled(False)
 
         # Ações dos Widgets
         self.w6_table_produtos.tabela_produtos_festa(n_orcamento=n_orcamento)
+        self.w6_button_clientes.clicked.connect(
+            lambda: show_wsc(self.w6_input_nome_cliente,
+                             self.w6_label_cod_cliente,
+                             self.w6_input_telefone_cliente,
+                             self.w6_input_celular_cliente)
+        )
+        self.w6_input_cod_local_evento.textChanged.connect(
+            lambda: att_input(self.w6_input_cod_local_evento,
+                              self.w6_input_local_evento,
+                              get_locais_festa)
+        )
+        self.w6_button_local_evento.clicked.connect(
+            lambda: show_wslf(self.w6_input_cod_local_evento)
+        )
+        self.w6_input_cod_tipo_festa.textChanged.connect(
+            lambda: att_input(self.w6_input_cod_tipo_festa,
+                              self.w6_input_tipo_festa,
+                              get_tipos_festa)
+        )
+        self.w6_button_tipo_festa.clicked.connect(
+            lambda: show_wstf(self.w6_input_cod_tipo_festa)
+        )
+        self.w6_input_cod_entregador.textChanged.connect(
+            lambda: att_input(self.w6_input_cod_entregador,
+                              self.w6_input_entregador,
+                              get_entregadores)
+        )
+        self.w6_button_entregador.clicked.connect(
+            lambda: show_wse(self.w6_input_cod_entregador)
+        )
+        self.w6_input_cod_recolhedor.textChanged.connect(
+            lambda: att_input(self.w6_input_cod_recolhedor,
+                              self.w6_input_recolhedor,
+                              get_entregadores)
+        )
+        self.w6_button_recolhedor.clicked.connect(
+            lambda: show_wse(self.w6_input_cod_recolhedor)
+        )
+        self.w6_input_cod_produto.textChanged.connect(
+            lambda: cod_produto_typed(self.w6_input_cod_produto,
+                                      self.w6_input_cod_produto,
+                                      self.w6_input_nome_produto,
+                                      self.w6_input_quantidade_produto,
+                                      self.w6_input_valor_produto,
+                                      self.w6_checkbox_consignado)
+        )
+        self.w6_button_cod_produto.clicked.connect(
+            lambda: show_wsp(self.w6_input_cod_produto)
+        )
+        self.w6_button_adicionar_produto.clicked.connect(
+            lambda: add_produto_into_festa(self.w6_table_produtos,
+                                           n_orcamento,
+                                           self.w6_input_cod_produto,
+                                           self.w6_input_nome_produto,
+                                           self.w6_input_quantidade_produto,
+                                           self.w6_input_valor_produto)
+        )
+        self.w6_button_adicionar_produto.clicked.connect(
+            lambda: att_janela(Festa(int(n_orcamento)),
+                               self.w6_label_valor_total)
+        )
+        self.w6_button_remover_produto.clicked.connect(
+            lambda: remove_produto(n_orcamento,
+                                   self.w6_table_produtos)
+        )
+        self.w6_button_remover_produto.clicked.connect(
+            lambda: att_janela(Festa(int(n_orcamento)),
+                               self.w6_label_valor_total)
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w6_label_n_orcamento, 0, 0, 1, 12)
-        self.layout.addWidget(self.w6_label_nome_cliente, 1, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_nome_cliente, 1, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_clientes, 1, 2, 1, 1)
-        self.layout.addWidget(self.w6_label_telefone_cliente, 1, 3, 1, 1)
-        self.layout.addWidget(self.w6_input_telefone_cliente, 1, 4, 1, 1)
-        self.layout.addWidget(self.w6_label_celular_cliente, 1, 5, 1, 1)
-        self.layout.addWidget(self.w6_input_celular_cliente, 1, 6, 1, 1)
+        self.layout.addWidget(self.w6_label_cod_cliente, 1, 0, 1, 1)
+        self.layout.addWidget(self.w6_label_nome_cliente, 1, 1, 1, 1)
+        self.layout.addWidget(self.w6_input_nome_cliente, 1, 2, 1, 2)
+        self.layout.addWidget(self.w6_button_clientes, 1, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_telefone_cliente, 1, 5, 1, 1)
+        self.layout.addWidget(self.w6_input_telefone_cliente, 1, 6, 1, 1)
+        self.layout.addWidget(self.w6_label_celular_cliente, 1, 7, 1, 1)
+        self.layout.addWidget(self.w6_input_celular_cliente, 1, 8, 1, 1)
         self.layout.addWidget(self.w6_label_data_evento, 2, 0, 1, 1)
         self.layout.addWidget(self.w6_input_data_evento, 2, 1, 1, 1)
         self.layout.addWidget(self.w6_label_local_evento, 2, 2, 1, 1)
@@ -1210,7 +1401,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_label_cod_produto, 6, 0, 1, 1)
         self.layout.addWidget(self.w6_input_cod_produto, 6, 1, 1, 1)
         self.layout.addWidget(self.w6_button_cod_produto, 6, 2, 1, 1)
-        self.layout.addWidget(self.w6_label_nome_produto, 6, 3, 1, 2)
+        self.layout.addWidget(self.w6_input_nome_produto, 6, 3, 1, 2)
         self.layout.addWidget(self.w6_label_quantidade_produto, 6, 5, 1, 1)
         self.layout.addWidget(self.w6_input_quantidade_produto, 6, 6, 1, 1)
         self.layout.addWidget(self.w6_label_valor_produto, 6, 7, 1, 1)
@@ -1248,6 +1439,188 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_button_sair, 14, 6, 1, 6)
 
         self.showMaximized()
+
+    def w_search_clientes(self, input_target, label_target, input_tel,
+                          input_cel):
+
+        def att_cliente(table: MyTable):
+            codigo = table.item(table.currentRow(), 0).text()
+            cliente = Cliente(int(codigo))
+            label_target.setText(f'Código: {cliente.codigo}')
+            input_target.setText(cliente.nome)
+            input_target.setEnabled(False)
+            input_tel.setText(cliente.telefone)
+            input_tel.setEnabled(False)
+            input_cel.setText(cliente.celular)
+
+        def att_tabela(table: MyTable, input):
+            table.tabela_clientes(get_clientes(like=input.text()))
+
+        self.wsc_label_pesquisa = QLabel('Pesquisar:')
+        self.wsc_input_pesquisa = QLineEdit()
+        self.wsc_table_clientes = MyTable()
+        self.wsc_button_confirmar = MyButton('Confirmar')
+        self.wsc_button_cancelar = MyButton('Cancelar')
+
+        self.wsc_table_clientes.tabela_clientes(get_clientes())
+        self.wsc_input_pesquisa.textChanged.connect(
+            lambda: att_tabela(self.wsc_table_clientes,
+                               self.wsc_input_pesquisa)
+        )
+        self.wsc_button_confirmar.clicked.connect(
+            lambda: att_cliente(self.wsc_table_clientes)
+        )
+        self.wsc_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.wsc_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.wsc_input_pesquisa, 0, 1, 1, 11)
+        self.layout.addWidget(self.wsc_table_clientes, 1, 0, 1, 12)
+        self.layout.addWidget(self.wsc_button_confirmar, 2, 0, 1, 6)
+        self.layout.addWidget(self.wsc_button_cancelar, 2, 6, 1, 6)
+
+        self.resize(800, 800)
+        self.show()
+
+    def w_search_produtos(self, input_cod):
+
+        def choose_produto(table: MyTable, input_cod):
+            codigo = table.item(table.currentRow(), 0).text()
+            input_cod.setText(f'{codigo}')
+
+        def att_janela(table: MyTable, input):
+            table.tabela_produtos(get_produtos(nome=input.text()))
+
+        self.wsp_label_pesquisa = QLabel('Pesquisar:')
+        self.wsp_input_pesquisa = QLineEdit()
+        self.wsp_table_produtos = MyTable()
+        self.wsp_button_confirmar = MyButton('Confirmar')
+        self.wsp_button_cancelar = MyButton('Cancelar')
+
+        self.wsp_table_produtos.tabela_produtos(get_produtos())
+        self.wsp_input_pesquisa.textChanged.connect(
+            lambda: att_janela(self.wsp_table_produtos,
+                               self.wsp_input_pesquisa)
+        )
+        self.wsp_button_confirmar.clicked.connect(
+            lambda: choose_produto(self.wsp_table_produtos,
+                                   input_cod)
+        )
+        self.wsp_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+        self.wsp_button_cancelar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.wsp_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.wsp_input_pesquisa, 0, 1, 1, 11)
+        self.layout.addWidget(self.wsp_table_produtos, 1, 0, 1, 12)
+        self.layout.addWidget(self.wsp_button_confirmar, 2, 0, 1, 6)
+        self.layout.addWidget(self.wsp_button_cancelar, 2, 6, 1, 6)
+
+        self.resize(1200, 800)
+        self.show()
+
+    def w_search_locais_festa(self, input_cod):
+
+        def choose_local(table: MyTable, input_cod):
+            codigo = table.item(table.currentRow(), 0).text()
+            input_cod.setText(f'{codigo}')
+
+        self.wslf_label_pesquisa = QLabel('Pesquisar:')
+        self.wslf_input_pesquisa = QLineEdit()
+        self.wslf_table_locais_festa = MyTable()
+        self.wslf_button_confirmar = MyButton('Confirmar')
+        self.wslf_button_cancelar = MyButton('Cancelar')
+
+        self.wslf_table_locais_festa.tabela_locais_festa(get_locais_festa())
+        self.wslf_button_confirmar.clicked.connect(
+            lambda: choose_local(self.wslf_table_locais_festa,
+                                 input_cod)
+        )
+        self.wslf_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+        self.wslf_button_cancelar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.wslf_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.wslf_input_pesquisa, 0, 1, 1, 11)
+        self.layout.addWidget(self.wslf_table_locais_festa, 1, 0, 1, 12)
+        self.layout.addWidget(self.wslf_button_confirmar, 2, 0, 1, 6)
+        self.layout.addWidget(self.wslf_button_cancelar, 2, 6, 1, 6)
+
+        self.resize(600, 400)
+        self.show()
+
+    def w_search_tipos_festa(self, input_cod):
+
+        def choose_tipo(table: MyTable, input_cod):
+            codigo = table.item(table.currentRow(), 0).text()
+            input_cod.setText(f'{codigo}')
+
+        self.wstf_label_pesquisa = QLabel('Pesquisar:')
+        self.wstf_input_pesquisa = QLineEdit()
+        self.wstf_table_tipos_festa = MyTable()
+        self.wstf_button_confirmar = MyButton('Confirmar')
+        self.wstf_button_cancelar = MyButton('Cancelar')
+
+        self.wstf_table_tipos_festa.tabela_tipos_festa(get_tipos_festa())
+        self.wstf_button_confirmar.clicked.connect(
+            lambda: choose_tipo(self.wstf_table_tipos_festa,
+                                input_cod)
+        )
+        self.wstf_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+        self.wstf_button_cancelar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.wstf_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.wstf_input_pesquisa, 0, 1, 1, 11)
+        self.layout.addWidget(self.wstf_table_tipos_festa, 1, 0, 1, 12)
+        self.layout.addWidget(self.wstf_button_confirmar, 2, 0, 1, 6)
+        self.layout.addWidget(self.wstf_button_cancelar, 2, 6, 1, 6)
+
+        self.resize(600, 400)
+        self.show()
+
+    def w_search_entregadores(self, input_cod):
+
+        def choose_entregador(table: MyTable, input_cod):
+            codigo = table.item(table.currentRow(), 0).text()
+            input_cod.setText(f'{codigo}')
+
+        self.wse_label_pesquisa = QLabel('Pesquisar:')
+        self.wse_input_pesquisa = QLineEdit()
+        self.wse_table_entregadores = MyTable()
+        self.wse_button_confirmar = MyButton('Confirmar')
+        self.wse_button_cancelar = MyButton('Cancelar')
+
+        self.wse_table_entregadores.tabela_entregadores(get_entregadores())
+        self.wse_button_confirmar.clicked.connect(
+            lambda: choose_entregador(self.wse_table_entregadores,
+                                      input_cod)
+        )
+        self.wse_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+        self.wse_button_cancelar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.wse_label_pesquisa, 0, 0, 1, 1)
+        self.layout.addWidget(self.wse_input_pesquisa, 0, 1, 1, 11)
+        self.layout.addWidget(self.wse_table_entregadores, 1, 0, 1, 12)
+        self.layout.addWidget(self.wse_button_confirmar, 2, 0, 1, 6)
+        self.layout.addWidget(self.wse_button_cancelar, 2, 6, 1, 6)
+
+        self.resize(600, 400)
+        self.show()
 
 
 if __name__ == "__main__":
