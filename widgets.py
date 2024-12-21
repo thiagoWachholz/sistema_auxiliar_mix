@@ -1,4 +1,5 @@
 # type:ignore
+import datetime
 import sqlite3
 import sys
 
@@ -7,7 +8,8 @@ from PySide6.QtGui import QAction, QColor, QIntValidator, QKeyEvent, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QGridLayout, QLabel, QLineEdit, QMainWindow,
                                QMenu, QMenuBar, QMessageBox, QPushButton,
-                               QTableWidget, QTableWidgetItem, QWidget)
+                               QTableWidget, QTableWidgetItem, QTextEdit,
+                               QWidget)
 
 from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
 from objects import (Categoria, Cliente, Entregador, Festa, LocalFesta,
@@ -20,6 +22,8 @@ from objects import (Categoria, Cliente, Entregador, Festa, LocalFesta,
 class MyTable(QTableWidget):
     def __init__(self):
         super().__init__()
+
+        self.setSelectionBehavior(QTableWidget.SelectRows)
 
     def tabela_usuarios(self, lista):
         if len(lista) >= 1:
@@ -738,7 +742,32 @@ class MyWindow(QMainWindow):
                 n_orcamento = int(n_orcamento)
 
             self.w6_f = MyWindow('Festa', usuario=self.usuario)
-            self.w6_f.w6_festa(n_orcamento=n_orcamento)
+            self.w6_f.w6_festa(n_orcamento, table)
+
+        def show_w5_nova_festa(table):
+            self.w5_nf = MyWindow('Nova Festa', usuario=self.usuario)
+            self.w5_nf.w5_nova_festa(table)
+
+        def delete_festa(table: MyTable):
+            festa_to_delete = table.item(table.currentRow(), 0).text()
+            if self.confirm('Remover Festa',
+                            f"""
+            Tem certeza que deseja remover a festa {festa_to_delete}?
+            """):
+                cur_tw.execute(
+                    f"""
+                    DELETE FROM FESTAS_CONFIRMADAS
+                    WHERE N_ORCAMENTO = {festa_to_delete}
+                    """
+                )
+                cur_tw.execute(
+                    f"""
+                    DELETE FROM FESTAS
+                    WHERE N_ORCAMENTO = {festa_to_delete}
+                    """
+                )
+                conn_tw.commit()
+                table.tabela_festas_confirmadas(get_festas_confirmadas())
 
         # Menu da janela
         self.w5_menu_bar = QMenuBar(self)
@@ -800,7 +829,10 @@ class MyWindow(QMainWindow):
             lambda: show_w6_festa(self.w5_table_eventos_confirmados)
         )
         self.w5_button_adicionar_festa.clicked.connect(
-            lambda: show_w6_festa()
+            lambda: show_w5_nova_festa(self.w5_table_eventos_confirmados)
+        )
+        self.w5_button_remover_festa.clicked.connect(
+            lambda: delete_festa(self.w5_table_eventos_confirmados)
         )
 
         # Layout da janela
@@ -828,6 +860,98 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w5_button_impressoes, 5, 0, 1, 12)
 
         self.showMaximized()
+
+    def w5_nova_festa(self, table):
+
+        def nova_festa(n_orcamento=None, table=None):
+            if n_orcamento is None:
+                cur_mc.execute(
+                    """
+                    SELECT MAX(AN190_PEDIDO)
+                    FROM MC190_ORCAMENTO
+                    """
+                )
+                select = cur_mc.fetchone()
+                n_orcamento = select[0] + 1
+                hoje = datetime.datetime.today()
+                dia = hoje.day
+                mes = hoje.month
+                ano = hoje.year
+                cur_mc.execute(
+                    f"""
+                    INSERT INTO MC190_ORCAMENTO
+                    (AN190_PEDIDO, AD190_EMISSAO, AN190_CLIENTE,
+                    AC190_BAIXARESTOQUE,
+                    AC190_PRECOPROD, AC190_SIT, AC190_TIPOPRECO,
+                    AC190_DESC_PERC, AN190_MARGE_CUSTO, AN190_EMPRESA)
+                    VALUES
+                    ({n_orcamento},'{ano}-{mes}-{dia}', 0, 'N', 'S', 'A', 'D',
+                    0, 0, 0)
+                    """
+                )
+                conn_mc.commit()
+            else:
+                cur_mc.execute(
+                    """
+                    SELECT AN190_PEDIDO FROM MC190_ORCAMENTO
+                    """
+                )
+                select = cur_mc.fetchall()
+                n_orcamentos = []
+                for n in select:
+                    n_orcamentos.append(n[0])
+                if int(n_orcamento) not in n_orcamentos:
+                    return MyMessageBox('Orçamento Não Encontrado!')
+            cur_tw.execute("""
+                SELECT N_ORCAMENTO FROM FESTAS
+                """)
+            select1 = cur_tw.fetchall()
+            n_festas = []
+            for n in select1:
+                n_festas.append(n[0])
+            if n_orcamento not in n_festas:
+                cur_tw.execute(
+                    f"""
+                    INSERT INTO FESTAS (N_ORCAMENTO)
+                    VALUES ({n_orcamento})
+                    """
+                )
+                cur_tw.execute(
+                    f"""
+                    INSERT INTO FESTAS_CONFIRMADAS (N_ORCAMENTO)
+                    VALUES ({n_orcamento})
+                    """
+                )
+            self.w_nova_festa = MyWindow('Nova Festa', usuario=self.usuario)
+            self.w_nova_festa.w6_festa(int(n_orcamento), table)
+
+        self.w5_button_nova_festa = MyButton('Nova Festa')
+        self.w5_input_num_nova_festa = QLineEdit()
+        self.w5_button_num_nova_festa = MyButton(
+            'Nova Festa a partir do orçamento')
+
+        self.w5_input_num_nova_festa.setInputMask('000000')
+
+        self.w5_button_nova_festa.clicked.connect(
+            lambda: nova_festa(n_orcamento=None, table=table)
+        )
+        self.w5_button_nova_festa.clicked.connect(
+            lambda: self.close()
+        )
+        self.w5_button_num_nova_festa.clicked.connect(
+            lambda: nova_festa(n_orcamento=self.w5_input_num_nova_festa.text(),
+                               table=table)
+        )
+        self.w5_button_num_nova_festa.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.layout.addWidget(self.w5_button_nova_festa, 1, 0, 1, 12)
+        self.layout.addWidget(self.w5_input_num_nova_festa, 2, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_num_nova_festa, 3, 0, 1, 12)
+
+        self.resize(300, 150)
+        self.show()
 
     def w5_entregadores(self):
 
@@ -1077,7 +1201,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.resize(800, 600)
         self.show()
 
-    def w6_festa(self, n_orcamento=None):
+    def w6_festa(self, n_orcamento=None, table=None | MyTable):
 
         def show_wse(*args):
             self.wse = MyWindow('Entregadores', usuario=self.usuario)
@@ -1170,6 +1294,158 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             input_valor.setText('')
             input_cod.setFocus()
 
+        def check_data(data):
+            try:
+                datetime.datetime.strptime(data, "%d/%m/%Y")
+                return True
+            except ValueError:
+                return False
+
+        def att_festa(n_orcamento, cod_cliente, nome_cliente, tel_cliente,
+                      data, local, tipo, qtd_pessoas, qtd_alc, estado,
+                      consumo, locacao, avaria, entregador, recolhedor, obs1,
+                      obs2):
+            # Salvando codigo cliente
+            if cod_cliente.text() != '':
+                codigo_cliente = cod_cliente.text().split(' ')
+                codigo_cliente = int(codigo_cliente[1])
+                cur_mc.execute(
+                    f"""
+                    UPDATE MC190_ORCAMENTO
+                    SET AN190_CLIENTE = {codigo_cliente}
+                    WHERE AN190_PEDIDO = {n_orcamento}
+                    """
+                )
+                conn_mc.commit()
+            cur_mc.execute(
+                f"""
+                UPDATE MC190_ORCAMENTO
+                SET AC190_NOMECLI = '{nome_cliente.text()}'
+                WHERE AN190_PEDIDO = {n_orcamento}
+                """
+            )
+            conn_mc.commit()
+            cur_mc.execute(
+                f"""
+                UPDATE MC190_ORCAMENTO
+                SET AC190_TELEFONE = '{tel_cliente.text()}'
+                WHERE AN190_PEDIDO = {n_orcamento}
+                """
+            )
+            conn_mc.commit()
+            cur_mc.execute(
+                f"""
+                UPDATE MC190_ORCAMENTO
+                SET AC190_OBS1 = '{obs1.toPlainText()}'
+                WHERE AN190_PEDIDO = {n_orcamento}
+                """
+            )
+            conn_mc.commit()
+            cur_mc.execute(
+                f"""
+                UPDATE MC190_ORCAMENTO
+                SET AC190_OBS2 = '{obs2.toPlainText()}'
+                WHERE AN190_PEDIDO = {n_orcamento}
+                """
+            )
+            conn_mc.commit()
+            if check_data(data.text()):
+                data_edit = datetime.datetime.strptime(data.text(), "%d/%m/%Y")
+                dia = data_edit.day
+                mes = data_edit.month
+                ano = data_edit.year
+                data_sql = f'{ano}-{mes}-{dia}'
+                cur_tw.execute(
+                    f"""
+                    UPDATE FESTAS
+                    SET DATA = '{data_sql}'
+                    WHERE N_ORCAMENTO = {n_orcamento}
+                    """
+                )
+                conn_tw.commit()
+            else:
+                MyMessageBox('Data Inválida!')
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS
+                SET LOCAL = '{local.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS
+                SET TIPO = '{tipo.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS
+                SET QTD_PESSOAS = {qtd_pessoas.text()}
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS
+                SET QTD_ALCOOLICOS = {qtd_alc.text()}
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET ESTADO = '{estado.currentText()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET CONSUMO = '{consumo.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET LOCACAO = '{locacao.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET AVARIA = '{avaria.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET ENTREGADOR = '{entregador.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+            cur_tw.execute(
+                f"""
+                UPDATE FESTAS_CONFIRMADAS
+                SET RECOLHEDOR = '{recolhedor.text()}'
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            conn_tw.commit()
+
         # Widgets da janela
         self.w6_label_n_orcamento = QLabel(
             f'Número do Orçamento: {n_orcamento}')
@@ -1196,12 +1472,16 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_label_qtd_alcoolicos = QLabel(
             'Pessoas que bebem bebida alcoólica:')
         self.w6_input_qtd_alcoolicos = QLineEdit()
+        self.w6_label_obs1 = QLabel('Observação 1:')
+        self.w6_textarea_obs1 = QTextEdit()
+        self.w6_label_obs2 = QLabel('Observação 2:')
+        self.w6_textarea_obs2 = QTextEdit()
         self.w6_label_quebra = QLabel(370*'-')
         self.w6_label_produtos = QLabel('Produtos')
         self.w6_label_cod_produto = QLabel('Código:')
         self.w6_button_cod_produto = QPushButton('Produtos')
         self.w6_input_cod_produto = QLineEdit()
-        self.w6_input_nome_produto = QLabel()
+        self.w6_input_nome_produto = QLineEdit()
         self.w6_label_quantidade_produto = QLabel('Quantidade:')
         self.w6_input_quantidade_produto = QLineEdit()
         self.w6_checkbox_consignado = QCheckBox('Consignado')
@@ -1234,7 +1514,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_button_recolhedor = QPushButton('Entregadores')
         self.w6_input_cod_recolhedor = QLineEdit()
         self.w6_input_recolhedor = QLineEdit()
-        self.w6_checkbox_festa_confirmada = QCheckBox('Festa Confirmada')
+        self.w6_combobox_estado_festa = QComboBox()
         self.w6_button_confirmar = MyButton('Confirmar')
         self.w6_button_sair = MyButton('Sair')
 
@@ -1253,10 +1533,16 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_int_validator = QIntValidator()
         self.w6_input_cod_local_evento.setValidator(self.w6_int_validator)
         self.w6_input_celular_cliente.setEnabled(False)
-        self.w6_input_cod_produto.setInputMask('00.0000')
+        self.w6_input_cod_produto.setInputMask('99.9999')
         self.w6_input_data_evento.setInputMask('00/00/0000')
         self.w6_input_qtd_pessoas.setInputMask('0000')
         self.w6_input_qtd_alcoolicos.setInputMask('0000')
+        self.w6_combobox_estado_festa.addItem('Não Confirmado')
+        self.w6_combobox_estado_festa.addItem('Confirmado')
+        self.w6_combobox_estado_festa.addItem('Entregue')
+        self.w6_combobox_estado_festa.addItem('Recolhido')
+        self.w6_textarea_obs1.setMaximumSize(400, 80)
+        self.w6_textarea_obs2.setMaximumSize(400, 80)
         if n_orcamento is not None:
             festa_atual = Festa(n_orcamento)
             if festa_atual.cod_cliente != 0:
@@ -1284,21 +1570,32 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             for local in locais_festa:
                 if festa_atual.local == locais_festa[local].nome:
                     self.w6_input_cod_local_evento.setText(str(local))
-                    self.w6_input_local_evento.setReadOnly(True)
             self.w6_input_local_evento.setText(festa_atual.local)
             del locais_festa
             tipos_festa = get_tipos_festa()
             for tipo in tipos_festa:
                 if festa_atual.tipo == tipos_festa[tipo].nome:
                     self.w6_input_cod_tipo_festa.setText(str(tipo))
-                    self.w6_input_tipo_festa.setReadOnly(True)
             self.w6_input_tipo_festa.setText(festa_atual.tipo)
             del tipos_festa
             self.w6_input_qtd_pessoas.setText(str(festa_atual.qtd_pessoas))
             self.w6_input_qtd_alcoolicos.setText(
                 str(festa_atual.qtd_alcoolicos))
             att_janela(festa_atual, self.w6_label_valor_total)
-            self.w6_input_nome_produto.setEnabled(False)
+            if festa_atual.consumo is not None:
+                self.w6_input_consumo.setText(festa_atual.consumo)
+            if festa_atual.avaria is not None:
+                self.w6_input_avaria.setText(festa_atual.avaria)
+            if festa_atual.locacao is not None:
+                self.w6_input_locacao.setText(festa_atual.locacao)
+            if festa_atual.entregador is not None:
+                self.w6_input_entregador.setText(festa_atual.entregador)
+            if festa_atual.recolhedor is not None:
+                self.w6_input_recolhedor.setText(festa_atual.recolhedor)
+            if festa_atual.obs1 is not None:
+                self.w6_textarea_obs1.setText(festa_atual.obs1)
+            if festa_atual.obs2 is not None:
+                self.w6_textarea_obs2.setText(festa_atual.obs2)
 
         # Ações dos Widgets
         self.w6_table_produtos.tabela_produtos_festa(n_orcamento=n_orcamento)
@@ -1371,6 +1668,32 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             lambda: att_janela(Festa(int(n_orcamento)),
                                self.w6_label_valor_total)
         )
+        self.w6_button_confirmar.clicked.connect(
+            lambda: att_festa(n_orcamento, self.w6_label_cod_cliente,
+                              self.w6_input_nome_cliente,
+                              self.w6_input_telefone_cliente,
+                              self.w6_input_data_evento,
+                              self.w6_input_local_evento,
+                              self.w6_input_tipo_festa,
+                              self.w6_input_qtd_pessoas,
+                              self.w6_input_qtd_alcoolicos,
+                              self.w6_combobox_estado_festa,
+                              self.w6_input_consumo, self.w6_input_locacao,
+                              self.w6_input_avaria, self.w6_input_entregador,
+                              self.w6_input_recolhedor,
+                              self.w6_textarea_obs1,
+                              self.w6_textarea_obs2)
+        )
+        self.w6_button_confirmar.clicked.connect(
+            lambda: table.tabela_festas_confirmadas(
+                get_festas_confirmadas())
+        )
+        self.w6_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+        self.w6_button_sair.clicked.connect(
+            lambda: self.close()
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w6_label_n_orcamento, 0, 0, 1, 12)
@@ -1396,47 +1719,51 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_input_qtd_pessoas, 3, 7, 1, 2)
         self.layout.addWidget(self.w6_label_qtd_alcoolicos, 3, 9, 1, 1)
         self.layout.addWidget(self.w6_input_qtd_alcoolicos, 3, 10, 1, 2)
-        self.layout.addWidget(self.w6_label_quebra, 4, 0, 1, 12)
-        self.layout.addWidget(self.w6_label_produtos, 5, 0, 1, 12)
-        self.layout.addWidget(self.w6_label_cod_produto, 6, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_cod_produto, 6, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_cod_produto, 6, 2, 1, 1)
-        self.layout.addWidget(self.w6_input_nome_produto, 6, 3, 1, 2)
-        self.layout.addWidget(self.w6_label_quantidade_produto, 6, 5, 1, 1)
-        self.layout.addWidget(self.w6_input_quantidade_produto, 6, 6, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_produto, 6, 7, 1, 1)
-        self.layout.addWidget(self.w6_input_valor_produto, 6, 8, 1, 1)
-        self.layout.addWidget(self.w6_checkbox_consignado, 6, 9, 1, 1)
-        self.layout.addWidget(self.w6_button_adicionar_produto, 6, 10, 1, 1)
-        self.layout.addWidget(self.w6_button_remover_produto, 6, 11, 1, 1)
-        self.layout.addWidget(self.w6_table_produtos, 7, 0, 1, 12)
-        self.layout.addWidget(self.w6_label_valor_total, 8, 0, 1, 12)
-        self.layout.addWidget(self.w6_label_consumo, 9, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_consumo, 9, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_carregar_consumo, 9, 2, 1, 1)
-        self.layout.addWidget(self.w6_button_consultar_consumo, 9, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_consumo, 9, 4, 1, 1)
-        self.layout.addWidget(self.w6_label_locacao, 10, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_locacao, 10, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_carregar_locacao, 10, 2, 1, 1)
-        self.layout.addWidget(self.w6_button_consultar_locacao, 10, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_locacao, 10, 4, 1, 1)
-        self.layout.addWidget(self.w6_label_avaria, 11, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_avaria, 11, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_carregar_avaria, 11, 2, 1, 1)
-        self.layout.addWidget(self.w6_button_consultar_avaria, 11, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_avaria, 11, 4, 1, 1)
-        self.layout.addWidget(self.w6_label_entregador, 12, 0, 1, 1)
-        self.layout.addWidget(self.w6_input_cod_entregador, 12, 1, 1, 1)
-        self.layout.addWidget(self.w6_button_entregador, 12, 2, 1, 1)
-        self.layout.addWidget(self.w6_input_entregador, 12, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_recolhedor, 12, 6, 1, 1)
-        self.layout.addWidget(self.w6_input_cod_recolhedor, 12, 7, 1, 1)
-        self.layout.addWidget(self.w6_button_recolhedor, 12, 8, 1, 1)
-        self.layout.addWidget(self.w6_input_recolhedor, 12, 9, 1, 1)
-        self.layout.addWidget(self.w6_checkbox_festa_confirmada, 13, 0, 1, 12)
-        self.layout.addWidget(self.w6_button_confirmar, 14, 0, 1, 6)
-        self.layout.addWidget(self.w6_button_sair, 14, 6, 1, 6)
+        self.layout.addWidget(self.w6_label_obs1, 4, 0, 1, 1)
+        self.layout.addWidget(self.w6_textarea_obs1, 4, 1, 1, 5)
+        self.layout.addWidget(self.w6_label_obs2, 4, 6, 1, 1)
+        self.layout.addWidget(self.w6_textarea_obs2, 4, 7, 1, 5)
+        self.layout.addWidget(self.w6_label_quebra, 5, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_produtos, 6, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_cod_produto, 7, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_produto, 7, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_cod_produto, 7, 2, 1, 1)
+        self.layout.addWidget(self.w6_input_nome_produto, 7, 3, 1, 2)
+        self.layout.addWidget(self.w6_label_quantidade_produto, 7, 5, 1, 1)
+        self.layout.addWidget(self.w6_input_quantidade_produto, 7, 6, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_produto, 7, 7, 1, 1)
+        self.layout.addWidget(self.w6_input_valor_produto, 7, 8, 1, 1)
+        self.layout.addWidget(self.w6_checkbox_consignado, 7, 9, 1, 1)
+        self.layout.addWidget(self.w6_button_adicionar_produto, 7, 10, 1, 1)
+        self.layout.addWidget(self.w6_button_remover_produto, 7, 11, 1, 1)
+        self.layout.addWidget(self.w6_table_produtos, 8, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_valor_total, 9, 0, 1, 12)
+        self.layout.addWidget(self.w6_label_consumo, 10, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_consumo, 10, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_consumo, 10, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_consumo, 10, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_consumo, 10, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_locacao, 11, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_locacao, 11, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_locacao, 11, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_locacao, 11, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_locacao, 11, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_avaria, 12, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_avaria, 12, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_carregar_avaria, 12, 2, 1, 1)
+        self.layout.addWidget(self.w6_button_consultar_avaria, 12, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_avaria, 12, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_entregador, 13, 0, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_entregador, 13, 1, 1, 1)
+        self.layout.addWidget(self.w6_button_entregador, 13, 2, 1, 1)
+        self.layout.addWidget(self.w6_input_entregador, 13, 3, 1, 1)
+        self.layout.addWidget(self.w6_label_recolhedor, 13, 6, 1, 1)
+        self.layout.addWidget(self.w6_input_cod_recolhedor, 13, 7, 1, 1)
+        self.layout.addWidget(self.w6_button_recolhedor, 13, 8, 1, 1)
+        self.layout.addWidget(self.w6_input_recolhedor, 13, 9, 1, 1)
+        self.layout.addWidget(self.w6_combobox_estado_festa, 14, 0, 1, 12)
+        self.layout.addWidget(self.w6_button_confirmar, 15, 0, 1, 6)
+        self.layout.addWidget(self.w6_button_sair, 15, 6, 1, 6)
 
         self.showMaximized()
 

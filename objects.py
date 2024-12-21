@@ -81,7 +81,7 @@ class Categoria():
 
 
 class Festa():
-    def __init__(self, numero, confirmada=False) -> None:
+    def __init__(self, numero) -> None:
         self.numero = numero
         self.cod_cliente = None
         self.nome = None
@@ -90,11 +90,15 @@ class Festa():
         self.tipo = None
         self.qtd_pessoas = None
         self.qtd_alcoolicos = None
+        self.obs1 = None
+        self.obs2 = None
         self.produtos = {}
         self.consumo = None
         self.avaria = None
         self.locacao = None
         self.estado = None
+        self.entregador = None
+        self.recolhedor = None
 
         cur_mc.execute(
             f"""
@@ -135,16 +139,26 @@ class Festa():
         self.qtd_pessoas = select1[0][3]
         self.qtd_alcoolicos = select1[0][4]
 
-        if confirmada:
-            cur_tw.execute(f"""
-                SELECT ESTADO, CONSUMO, LOCACAO, AVARIA
-                FROM FESTAS_CONFIRMADAS WHERE N_ORCAMENTO = {self.numero}
-            """)
-            select2 = cur_tw.fetchall()
-            self.estado = select2[0][0]
-            self.consumo = select2[0][1]
-            self.locacao = select2[0][2]
-            self.avaria = select2[0][3]
+        cur_tw.execute(f"""
+            SELECT ESTADO, CONSUMO, LOCACAO, AVARIA
+            FROM FESTAS_CONFIRMADAS WHERE N_ORCAMENTO = {self.numero}
+        """)
+        select2 = cur_tw.fetchall()
+        self.estado = select2[0][0]
+        self.consumo = select2[0][1]
+        self.locacao = select2[0][2]
+        self.avaria = select2[0][3]
+
+        cur_tw.execute(
+            f"""
+            SELECT ENTREGADOR, RECOLHEDOR
+            FROM FESTAS_CONFIRMADAS
+            WHERE N_ORCAMENTO = {self.numero}
+            """
+        )
+        select4 = cur_tw.fetchone()
+        self.entregador = select4[0]
+        self.recolhedor = select4[1]
 
         cur_mc.execute(
             f"""
@@ -167,6 +181,17 @@ class Festa():
             self.produtos[item[0]].append(select_produtos1[1])
             self.produtos[item[0]].append(float(item[1]))
             self.produtos[item[0]].append(float(item[2]))
+
+        cur_mc.execute(
+            f"""
+            SELECT AC190_OBS1, AC190_OBS2
+            FROM MC190_ORCAMENTO
+            WHERE AN190_PEDIDO = {self.numero}
+            """
+        )
+        select = cur_mc.fetchone()
+        self.obs1 = select[0]
+        self.obs2 = select[1]
 
     def get_produtos(self):
         cur_mc.execute(
@@ -522,5 +547,6 @@ def get_clientes(order_by='MC01CODIGO', like=''):
 
 
 if __name__ == "__main__":
-    for produto in get_produtos():
-        print(produto)
+    cod = 'CÓDIGO'
+    codsplit = cod.split('Ó')
+    print(codsplit)

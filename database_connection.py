@@ -1,4 +1,5 @@
 # type:ignore
+# import datetime
 import json
 import os
 import sqlite3
@@ -128,32 +129,7 @@ cur_tw.execute(
         COD_PRODUTO CHAR(7),
         QUANTIDADE INT,
         VALOR DECIMAL(10,2),
-        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
-    )
-    """
-)
-
-cur_tw.execute(
-    """
-    CREATE TABLE IF NOT EXISTS LOCACAO (
-        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        N_ORCAMENTO INTEGER,
-        COD_PRODUTO CHAR(7),
-        QUANTIDADE INT,
-        VALOR DECIMAL(10,2),
-        FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
-    )
-    """
-)
-
-cur_tw.execute(
-    """
-    CREATE TABLE IF NOT EXISTS AVARIA (
-        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        N_ORCAMENTO INTEGER,
-        COD_PRODUTO CHAR(7),
-        QUANTIDADE INT,
-        VALOR DECIMAL(10,2),
+        TIPO VARCHAR (15),
         FOREIGN KEY (N_ORCAMENTO) REFERENCES FESTAS(N_ORCAMENTO)
     )
     """
@@ -171,16 +147,4 @@ cur_tw.execute(
 conn_tw.commit()
 
 if __name__ == "__main__":
-    cur_tw.execute(
-        """
-        INSERT INTO FESTAS (N_ORCAMENTO)
-        VALUES (11925)
-        """
-    )
-    cur_tw.execute(
-        """
-        INSERT INTO FESTAS_CONFIRMADAS (N_ORCAMENTO)
-        VALUES (11925)
-        """
-    )
-    conn_tw.commit()
+    pass
