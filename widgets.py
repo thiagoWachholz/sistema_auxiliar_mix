@@ -235,9 +235,16 @@ class MyTable(QTableWidget):
             self.setColumnCount(1)
             self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
 
-    def tabela_produtos_festa(self, n_orcamento=None):
+    def tabela_produtos_festa(self, n_orcamento=None, consumo=False,
+                              locacao=False, avaria=False):
         if n_orcamento is None:
             lista = []
+        elif consumo:
+            lista = Festa(n_orcamento).consumo
+        elif locacao:
+            lista = Festa(n_orcamento).locacao
+        elif avaria:
+            lista = Festa(n_orcamento).avaria
         else:
             lista = Festa(n_orcamento).produtos
         if len(lista) >= 1:
@@ -246,8 +253,6 @@ class MyTable(QTableWidget):
             for i in range(self.rowCount()):
                 self.setRowHeight(i, 20)
             self.setColumnCount(6)
-            for i in range(self.columnCount()):
-                self.setColumnWidth(i, 280)
             self.setHorizontalHeaderLabels(
                 ['Código', 'Descrição', 'Referência', 'Quantidade',
                  'Valor Unitário', 'Valor Total'])
@@ -277,6 +282,7 @@ class MyTable(QTableWidget):
             self.setRowCount(1)
             self.setColumnCount(1)
             self.setItem(0, 0, QTableWidgetItem('Sem Registros'))
+        self.resizeColumnsToContents()
 
     def tabela_clientes(self, lista):
         if len(lista) >= 1:
@@ -1203,6 +1209,11 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
 
     def w6_festa(self, n_orcamento=None, table=None | MyTable):
 
+        def show_w_consumo(*args):
+            self.w_consumo = MyWindow(
+                'Consumido ou Usado', usuario=self.usuario)
+            self.w_consumo.w_show_consumo(*args)
+
         def show_wse(*args):
             self.wse = MyWindow('Entregadores', usuario=self.usuario)
             self.wse.w_search_entregadores(*args)
@@ -1446,7 +1457,103 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             )
             conn_tw.commit()
 
-        # Widgets da janela
+        def carregar_consumo(n_orcamento, id, tipo=None):
+
+            def script_sql(n_orcamento, id, tipo):
+                cur_mc.execute(
+                    f"""
+                    SELECT AC13NOTA
+                    FROM MC13VENDA
+                    WHERE AC13NOTA = '{id}'
+                    """
+                )
+                select = cur_mc.fetchone()
+                if select is None:
+                    return MyMessageBox('Consumo Não Encontrado!')
+                else:
+                    cur_mc.execute(
+                        f"""
+                        SELECT AC14CODIGO, AN14QTDE, AN14UNIT
+                        FROM MC14ITEMNF
+                        WHERE AC14NOTA = '{id}'
+                        """
+                    )
+                    select = cur_mc.fetchall()
+                    for codigo in select:
+                        cur_tw.execute(
+                            f"""
+                            INSERT INTO CONSUMO (N_ORCAMENTO, COD_PRODUTO,
+                            QUANTIDADE, VALOR, TIPO)
+                            VALUES
+                            ({n_orcamento},'{codigo[0]}',{codigo[1]},{codigo[2]},
+                            '{tipo}')
+                            """
+                        )
+                        conn_tw.commit()
+                    return MyMessageBox('Produtos indexados com Sucesso!')
+
+            cur_tw.execute(
+                f"""
+                SELECT N_ORCAMENTO
+                FROM CONSUMO
+                WHERE N_ORCAMENTO = {n_orcamento}
+                AND TIPO = '{tipo}'
+                """
+            )
+            select = cur_tw.fetchall()
+            if len(select) >= 1:
+                if self.confirm('Consumo já existe', """
+                Já há um consumo registrado para essa festa, deseja substituir?
+                """):
+                    cur_tw.execute(f"""
+                    DELETE FROM CONSUMO
+                    WHERE N_ORCAMENTO = {n_orcamento}
+                    AND TIPO = '{tipo}'
+                    """)
+                    conn_tw.commit()
+                    script_sql(n_orcamento, id, tipo)
+            if len(select) == 0:
+                script_sql(n_orcamento, id, tipo)
+
+        def excluir_consumo(n_orcamento, tipo):
+            cur_tw.execute(
+                f"""
+                SELECT COD_PRODUTO
+                FROM CONSUMO
+                WHERE N_ORCAMENTO = {n_orcamento}
+                """
+            )
+            select = cur_tw.fetchall()
+            if select is not None:
+                for cod in select:
+                    cur_tw.execute(
+                        f"""
+                        DELETE FROM CONSUMO
+                        WHERE N_ORCAMENTO = {n_orcamento}
+                        AND COD_PRODUTO = '{cod[0]}'
+                        AND TIPO = '{tipo}'
+                        """
+                    )
+                    conn_tw.commit()
+            MyMessageBox('Produtos Excluídos')
+
+        def att_valores(n_orcamento, consumo, locacao, avaria, total):
+
+            festa = Festa(n_orcamento)
+            consumo.setText(
+                (f'Consumo: R${festa.valor_consumo:.2f}').replace('.', ','))
+            locacao.setText(
+                (f'Locação: R${festa.valor_locacao:.2f}').replace('.', ','))
+            avaria.setText(
+                (f'Avaria: R${festa.valor_avaria:.2f}').replace('.', ','))
+            del festa
+            festa = Festa(n_orcamento)
+            s1 = festa.valor_consumo
+            s2 = festa.valor_locacao
+            s3 = festa.valor_avaria
+            total.setText((f'Total: R${(s1+s2+s3):.2f}').replace('.', ','))
+
+            # Widgets da janela
         self.w6_label_n_orcamento = QLabel(
             f'Número do Orçamento: {n_orcamento}')
         self.w6_label_cod_cliente = QLabel('')
@@ -1495,17 +1602,21 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_input_consumo = QLineEdit()
         self.w6_button_carregar_consumo = MyButton('Carregar Consumo')
         self.w6_button_consultar_consumo = MyButton('Consultar Consumo')
+        self.w6_button_excluir_consumo = MyButton('Excluir Consumo')
         self.w6_label_valor_consumo = QLabel('Valor Consumo:')
         self.w6_label_locacao = QLabel('Locação:')
         self.w6_input_locacao = QLineEdit()
         self.w6_button_carregar_locacao = MyButton('Carregar Locação')
         self.w6_button_consultar_locacao = MyButton('Consultar Locação')
+        self.w6_button_excluir_locacao = MyButton('Excluir Locação')
         self.w6_label_valor_locacao = QLabel('Valor Locação:')
         self.w6_label_avaria = QLabel('Avaria:')
         self.w6_input_avaria = QLineEdit()
         self.w6_button_carregar_avaria = MyButton('Carregar Avaria')
         self.w6_button_consultar_avaria = MyButton('Consultar Avaria')
+        self.w6_button_excluir_avaria = MyButton('Excluir Avaria')
         self.w6_label_valor_avaria = QLabel('Valor Avaria:')
+        self.w6_label_valor_total_consumo = QLabel('Total: ')
         self.w6_label_entregador = QLabel('Entregador:')
         self.w6_button_entregador = QPushButton('Entregadores')
         self.w6_input_cod_entregador = QLineEdit()
@@ -1582,12 +1693,6 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             self.w6_input_qtd_alcoolicos.setText(
                 str(festa_atual.qtd_alcoolicos))
             att_janela(festa_atual, self.w6_label_valor_total)
-            if festa_atual.consumo is not None:
-                self.w6_input_consumo.setText(festa_atual.consumo)
-            if festa_atual.avaria is not None:
-                self.w6_input_avaria.setText(festa_atual.avaria)
-            if festa_atual.locacao is not None:
-                self.w6_input_locacao.setText(festa_atual.locacao)
             if festa_atual.entregador is not None:
                 self.w6_input_entregador.setText(festa_atual.entregador)
             if festa_atual.recolhedor is not None:
@@ -1596,6 +1701,24 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
                 self.w6_textarea_obs1.setText(festa_atual.obs1)
             if festa_atual.obs2 is not None:
                 self.w6_textarea_obs2.setText(festa_atual.obs2)
+            valor_consumo = (
+                f'R${festa_atual.valor_consumo:.2f}').replace('.', ',')
+            self.w6_label_valor_consumo.setText(
+                f'Consumo: {valor_consumo}')
+            valor_locacao = (
+                f'R${festa_atual.valor_locacao:.2f}').replace('.', ',')
+            self.w6_label_valor_locacao.setText(
+                f'Locação: {valor_locacao}')
+            valor_avaria = (
+                f'R${festa_atual.valor_avaria:.2f}').replace('.', ',')
+            self.w6_label_valor_avaria.setText(
+                f'Avaria: {valor_avaria}')
+            s1 = festa_atual.valor_avaria
+            s2 = festa_atual.valor_consumo
+            s3 = festa_atual.valor_locacao
+            self.w6_label_valor_total_consumo.setText(
+                (f'Total: R${(s1 + s2 + s3):.2f}').replace('.', ',')
+            )
 
         # Ações dos Widgets
         self.w6_table_produtos.tabela_produtos_festa(n_orcamento=n_orcamento)
@@ -1694,6 +1817,72 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_button_sair.clicked.connect(
             lambda: self.close()
         )
+        self.w6_button_carregar_consumo.clicked.connect(
+            lambda: carregar_consumo(n_orcamento, self.w6_input_consumo.text(),
+                                     'Consumo')
+        )
+        self.w6_button_carregar_consumo.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_excluir_consumo.clicked.connect(
+            lambda: excluir_consumo(n_orcamento, 'Consumo')
+        )
+        self.w6_button_excluir_consumo.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_consultar_consumo.clicked.connect(
+            lambda: show_w_consumo(n_orcamento, 'Consumo')
+        )
+        self.w6_button_carregar_locacao.clicked.connect(
+            lambda: carregar_consumo(n_orcamento, self.w6_input_locacao.text(),
+                                     'Locação')
+        )
+        self.w6_button_carregar_locacao.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_excluir_locacao.clicked.connect(
+            lambda: excluir_consumo(n_orcamento, 'Locação')
+        )
+        self.w6_button_excluir_locacao.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_consultar_locacao.clicked.connect(
+            lambda: show_w_consumo(n_orcamento, 'Locação')
+        )
+        self.w6_button_carregar_avaria.clicked.connect(
+            lambda: carregar_consumo(n_orcamento, self.w6_input_avaria.text(),
+                                     'Avaria')
+        )
+        self.w6_button_carregar_avaria.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_excluir_avaria.clicked.connect(
+            lambda: excluir_consumo(n_orcamento, 'Avaria')
+        )
+        self.w6_button_excluir_avaria.clicked.connect(
+            lambda: att_valores(n_orcamento, self.w6_label_valor_consumo,
+                                self.w6_label_valor_locacao,
+                                self.w6_label_valor_avaria,
+                                self.w6_label_valor_total_consumo)
+        )
+        self.w6_button_consultar_avaria.clicked.connect(
+            lambda: show_w_consumo(n_orcamento, 'Avaria')
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w6_label_n_orcamento, 0, 0, 1, 12)
@@ -1742,17 +1931,21 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_input_consumo, 10, 1, 1, 1)
         self.layout.addWidget(self.w6_button_carregar_consumo, 10, 2, 1, 1)
         self.layout.addWidget(self.w6_button_consultar_consumo, 10, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_consumo, 10, 4, 1, 1)
+        self.layout.addWidget(self.w6_button_excluir_consumo, 10, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_consumo, 10, 5, 1, 1)
         self.layout.addWidget(self.w6_label_locacao, 11, 0, 1, 1)
         self.layout.addWidget(self.w6_input_locacao, 11, 1, 1, 1)
         self.layout.addWidget(self.w6_button_carregar_locacao, 11, 2, 1, 1)
         self.layout.addWidget(self.w6_button_consultar_locacao, 11, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_locacao, 11, 4, 1, 1)
+        self.layout.addWidget(self.w6_button_excluir_locacao, 11, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_locacao, 11, 5, 1, 1)
         self.layout.addWidget(self.w6_label_avaria, 12, 0, 1, 1)
         self.layout.addWidget(self.w6_input_avaria, 12, 1, 1, 1)
         self.layout.addWidget(self.w6_button_carregar_avaria, 12, 2, 1, 1)
         self.layout.addWidget(self.w6_button_consultar_avaria, 12, 3, 1, 1)
-        self.layout.addWidget(self.w6_label_valor_avaria, 12, 4, 1, 1)
+        self.layout.addWidget(self.w6_button_excluir_avaria, 12, 4, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_avaria, 12, 5, 1, 1)
+        self.layout.addWidget(self.w6_label_valor_total_consumo, 12, 6, 1, 1)
         self.layout.addWidget(self.w6_label_entregador, 13, 0, 1, 1)
         self.layout.addWidget(self.w6_input_cod_entregador, 13, 1, 1, 1)
         self.layout.addWidget(self.w6_button_entregador, 13, 2, 1, 1)
@@ -1947,6 +2140,38 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.wse_button_cancelar, 2, 6, 1, 6)
 
         self.resize(600, 400)
+        self.show()
+
+    def w_show_consumo(self, n_orcamento, tipo):
+
+        self.w_label_consumo = QLabel(f'{tipo}')
+        self.w_table_consumo = MyTable()
+        self.w_label_total_consumo = QLabel('Valor Total:')
+
+        consumo = False
+        locacao = False
+        avaria = False
+        if tipo == 'Consumo':
+            consumo = True
+            valor_total = Festa(n_orcamento).valor_consumo
+        elif tipo == 'Locação':
+            locacao = True
+            valor_total = Festa(n_orcamento).valor_locacao
+        elif tipo == 'Avaria':
+            avaria = True
+            valor_total = Festa(n_orcamento).valor_avaria
+
+        self.w_table_consumo.tabela_produtos_festa(n_orcamento, consumo,
+                                                   locacao, avaria)
+        self.w_label_total_consumo.setText(
+            (f'R${valor_total:.2f}').replace('.', ',')
+        )
+
+        self.layout.addWidget(self.w_label_consumo, 0, 0, 1, 12)
+        self.layout.addWidget(self.w_table_consumo, 1, 0, 1, 12)
+        self.layout.addWidget(self.w_label_total_consumo, 2, 0, 1, 12)
+
+        self.resize(1000, 350)
         self.show()
 
 

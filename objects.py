@@ -93,9 +93,12 @@ class Festa():
         self.obs1 = None
         self.obs2 = None
         self.produtos = {}
-        self.consumo = None
-        self.avaria = None
-        self.locacao = None
+        self.consumo = {}
+        self.valor_consumo = 0
+        self.avaria = {}
+        self.valor_avaria = 0
+        self.locacao = {}
+        self.valor_locacao = 0
         self.estado = None
         self.entregador = None
         self.recolhedor = None
@@ -140,14 +143,11 @@ class Festa():
         self.qtd_alcoolicos = select1[0][4]
 
         cur_tw.execute(f"""
-            SELECT ESTADO, CONSUMO, LOCACAO, AVARIA
+            SELECT ESTADO
             FROM FESTAS_CONFIRMADAS WHERE N_ORCAMENTO = {self.numero}
         """)
         select2 = cur_tw.fetchall()
         self.estado = select2[0][0]
-        self.consumo = select2[0][1]
-        self.locacao = select2[0][2]
-        self.avaria = select2[0][3]
 
         cur_tw.execute(
             f"""
@@ -181,6 +181,78 @@ class Festa():
             self.produtos[item[0]].append(select_produtos1[1])
             self.produtos[item[0]].append(float(item[1]))
             self.produtos[item[0]].append(float(item[2]))
+
+        cur_tw.execute(f"""
+            SELECT COD_PRODUTO, QUANTIDADE, VALOR
+            FROM CONSUMO
+            WHERE N_ORCAMENTO = {numero}
+            AND TIPO = 'Consumo'
+            """)
+        select5 = cur_tw.fetchall()
+        for item in select5:
+            self.consumo[item[0]] = []
+            self.consumo[item[0]].append(item[0])
+            cur_mc.execute(
+                f"""
+                SELECT AC03DESC, AC03REF
+                FROM MC03PRO
+                WHERE AC03CODI = '{item[0]}'
+                """
+            )
+            select_produtos2 = cur_mc.fetchone()
+            self.consumo[item[0]].append(select_produtos2[0])
+            self.consumo[item[0]].append(select_produtos2[1])
+            self.consumo[item[0]].append(float(item[1]))
+            self.consumo[item[0]].append(float(item[2]))
+            self.valor_consumo += float(item[1])*float(item[2])
+
+        cur_tw.execute(f"""
+            SELECT COD_PRODUTO, QUANTIDADE, VALOR
+            FROM CONSUMO
+            WHERE N_ORCAMENTO = {numero}
+            AND TIPO = 'Locação'
+            """)
+        select5 = cur_tw.fetchall()
+        for item in select5:
+            self.locacao[item[0]] = []
+            self.locacao[item[0]].append(item[0])
+            cur_mc.execute(
+                f"""
+                SELECT AC03DESC, AC03REF
+                FROM MC03PRO
+                WHERE AC03CODI = '{item[0]}'
+                """
+            )
+            select_produtos2 = cur_mc.fetchone()
+            self.locacao[item[0]].append(select_produtos2[0])
+            self.locacao[item[0]].append(select_produtos2[1])
+            self.locacao[item[0]].append(float(item[1]))
+            self.locacao[item[0]].append(float(item[2]))
+            self.valor_locacao += float(item[1])*float(item[2])
+
+        cur_tw.execute(f"""
+            SELECT COD_PRODUTO, QUANTIDADE, VALOR
+            FROM CONSUMO
+            WHERE N_ORCAMENTO = {numero}
+            AND TIPO = 'Avaria'
+            """)
+        select5 = cur_tw.fetchall()
+        for item in select5:
+            self.avaria[item[0]] = []
+            self.avaria[item[0]].append(item[0])
+            cur_mc.execute(
+                f"""
+                SELECT AC03DESC, AC03REF
+                FROM MC03PRO
+                WHERE AC03CODI = '{item[0]}'
+                """
+            )
+            select_produtos2 = cur_mc.fetchone()
+            self.avaria[item[0]].append(select_produtos2[0])
+            self.avaria[item[0]].append(select_produtos2[1])
+            self.avaria[item[0]].append(float(item[1]))
+            self.avaria[item[0]].append(float(item[2]))
+            self.valor_avaria += float(item[1])*float(item[2])
 
         cur_mc.execute(
             f"""
