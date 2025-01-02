@@ -99,7 +99,7 @@ class Festa():
         self.valor_avaria = 0
         self.locacao = {}
         self.valor_locacao = 0
-        self.estado = None
+        self.estado = 'Não Confirmado'
         self.entregador = None
         self.recolhedor = None
 
@@ -589,16 +589,73 @@ def get_locais_festa():
     return locais_festa
 
 
-def get_festas_confirmadas():
+def get_festas_confirmadas(passados=False, order_by='DATA', n_orcamento=None,
+                           check_n_orcamento=False, data='',
+                           check_data=False, local='', check_local=False,
+                           nome='', check_nome=False, estado='',
+                           check_estado=False, anteriores=False):
     festas_confirmadas = {}
-    cur_tw.execute("""
-        SELECT DISTINCT N_ORCAMENTO
-        FROM FESTAS_CONFIRMADAS
-    """)
+    festas_confirmadas_ordenadas = {}
+    estados = []
+    reverse = True
+    todos_dias = False
+    dias = 7
+    cod_sql = """
+        SELECT F.N_ORCAMENTO
+        FROM FESTAS F
+        JOIN FESTAS_CONFIRMADAS C ON F.N_ORCAMENTO = C.N_ORCAMENTO
+        WHERE 1=1
+    """
+    if check_n_orcamento:
+        cod_sql += f' AND F.N_ORCAMENTO = {n_orcamento}'
+    if check_data:
+        if data == 'Hoje':
+            dias = 1
+        elif data == 'Esta Semana':
+            dias = 7
+        elif data == 'Este Mês':
+            dias = 30
+        elif data == 'Todos os Dias':
+            todos_dias = True
+        else:
+            dias = 1
+    if not check_n_orcamento and not check_local and \
+            not check_nome and not todos_dias:
+        reverse = False
+        cod_sql += ' AND'
+        for i in range(dias):
+            qtd_dia = i * -1 if anteriores else i
+            hoje = datetime.datetime.today() + datetime.timedelta(days=qtd_dia)
+            data_sql = f'{hoje.year}-{hoje.month}-{hoje.day}'
+            cod_sql += f' F.DATA = "{data_sql}"'
+            if i != dias-1:
+                cod_sql += ' OR'
+    cod_sql += ''' ORDER BY C.ESTADO ASC'''
+    print(cod_sql)
+    cur_tw.execute(cod_sql)
     select = cur_tw.fetchall()
     for festa in select:
-        festas_confirmadas[festa[0]] = Festa(festa[0])
-    return festas_confirmadas
+        festa_to_add = Festa(festa[0])
+        if not check_local:
+            local = ''
+        if not check_nome:
+            nome = ''
+        if check_estado:
+            estados = [estado]
+        else:
+            estados = ['Confirmado', 'Entregue', 'Não Confirmado', 'Recolhido']
+        if local.upper() in str(festa_to_add.local).upper() \
+            and nome.upper() in str(festa_to_add.nome).upper() \
+                and festa_to_add.estado in estados:
+            festas_confirmadas[festa[0]] = festa_to_add
+
+        festas_confirmadas_ordenadas = \
+            dict(sorted(festas_confirmadas.items(),
+                        key=lambda item: item[1].data,
+                        reverse=reverse))
+
+    print(dias)
+    return festas_confirmadas_ordenadas
 
 
 def get_clientes(order_by='MC01CODIGO', like=''):

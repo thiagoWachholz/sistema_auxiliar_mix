@@ -225,6 +225,14 @@ class MyTable(QTableWidget):
                 item4.setFlags(item4.flags() & ~Qt.ItemIsEditable)
                 item5 = QTableWidgetItem(str(lista[i].estado))
                 item5.setFlags(item5.flags() & ~Qt.ItemIsEditable)
+                if item5.text() == 'Não Confirmado':
+                    item5.setBackground(QColor('#55130B'))
+                if item5.text() == 'Confirmado':
+                    item5.setBackground(QColor('#0F550B'))
+                if item5.text() == 'Entregue':
+                    item5.setBackground(QColor('#806B26'))
+                if item5.text() == 'Recolhido':
+                    item5.setBackground(QColor('#0B1555'))
                 self.setItem(numero, 0, item1)
                 self.setItem(numero, 1, item2)
                 self.setItem(numero, 2, item3)
@@ -439,8 +447,11 @@ class MyWindow(QMainWindow):
         menu_arquivo.addAction(acao_usuarios)
 
         # Widgets da janela
+        self.dev_name = QLabel('Desenvolvido por: Thiago Bierhals Wachholz')
         self.button_eventos = QPushButton('Eventos')
         self.button_produtos = QPushButton('Produtos')
+        self.button_relatorios = QPushButton('Relatórios')
+        self.label_duvida = QLabel('Qualquer dúvida, contatar o Thiago!')
 
         # Signals dos widgets
         acao_usuarios.triggered.connect(lambda: show_w3())
@@ -448,8 +459,11 @@ class MyWindow(QMainWindow):
         self.button_eventos.clicked.connect(lambda: show_w5())
 
         # Layout da janela
+        self.layout.addWidget(self.dev_name, 0, 1, 1, 1)
         self.layout.addWidget(self.button_eventos, 1, 1, 1, 1)
         self.layout.addWidget(self.button_produtos, 2, 1, 1, 1)
+        self.layout.addWidget(self.button_relatorios, 3, 1, 1, 1)
+        self.layout.addWidget(self.label_duvida, 4, 1, 1, 1)
 
         self.showMaximized()
 
@@ -775,6 +789,20 @@ class MyWindow(QMainWindow):
                 conn_tw.commit()
                 table.tabela_festas_confirmadas(get_festas_confirmadas())
 
+        def att_tabela(table: MyTable, n_orcamento, check_n_orcamento,
+                       passados, data, check_data, local, check_local, nome,
+                       check_nome, estado, check_estado, anteriores):
+            table.tabela_festas_confirmadas(
+                get_festas_confirmadas(n_orcamento=n_orcamento,
+                                       check_n_orcamento=check_n_orcamento,
+                                       passados=passados, data=data,
+                                       check_data=check_data, local=local,
+                                       check_local=check_local, nome=nome,
+                                       check_nome=check_nome, estado=estado,
+                                       check_estado=check_estado,
+                                       anteriores=anteriores)
+            )
+
         # Menu da janela
         self.w5_menu_bar = QMenuBar(self)
         self.setMenuBar(self.w5_menu_bar)
@@ -804,6 +832,9 @@ class MyWindow(QMainWindow):
         self.w5_label_filtro_estado = QLabel('Estado:')
         self.w5_combobox_filtro_estado = QComboBox()
         self.w5_checkbox_filtro_estado = QCheckBox()
+        self.w5_combobox_periodo = QComboBox()
+        self.w5_checkbox_retro = QCheckBox('Realizadas')
+        self.w5_checkbox_todas_festas = QCheckBox('Todas as Festas')
         self.w5_table_eventos_confirmados = MyTable()
         self.w5_button_consultar_festa = MyButton('Consultar Festa')
         self.w5_button_adicionar_festa = MyButton('Adicionar Festa')
@@ -818,6 +849,10 @@ class MyWindow(QMainWindow):
         self.w5_combobox_filtro_estado.addItem('Confirmado')
         self.w5_combobox_filtro_estado.addItem('Entregue')
         self.w5_combobox_filtro_estado.addItem('Recolhido')
+        self.w5_combobox_periodo.addItem('Hoje')
+        self.w5_combobox_periodo.addItem('Esta Semana')
+        self.w5_combobox_periodo.addItem('Este Mês')
+        self.w5_combobox_periodo.addItem('Todos os Dias')
 
         # Ações dos Widgets
         self.w5_table_eventos_confirmados.tabela_festas_confirmadas(
@@ -840,6 +875,171 @@ class MyWindow(QMainWindow):
         self.w5_button_remover_festa.clicked.connect(
             lambda: delete_festa(self.w5_table_eventos_confirmados)
         )
+        self.w5_input_filtro_norcamento.textChanged.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_filtro_norcamento.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_todas_festas.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_input_filtro_data.textChanged.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_filtro_data.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_input_filtro_local.textChanged.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_filtro_local.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_input_filtro_nome.textChanged.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_filtro_nome.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_filtro_estado.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_checkbox_retro.toggled.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w5_label_titulo_eventos, 0, 0, 1, 12)
@@ -847,7 +1047,7 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w5_input_filtro_norcamento, 1, 1, 1, 1)
         self.layout.addWidget(self.w5_checkbox_filtro_norcamento, 1, 2, 1, 1)
         self.layout.addWidget(self.w5_label_filtro_data, 1, 3, 1, 1)
-        self.layout.addWidget(self.w5_input_filtro_data, 1, 4, 1, 1)
+        self.layout.addWidget(self.w5_combobox_periodo, 1, 4, 1, 1)
         self.layout.addWidget(self.w5_checkbox_filtro_data, 1, 5, 1, 1)
         self.layout.addWidget(self.w5_label_filtro_local, 1, 6, 1, 1)
         self.layout.addWidget(self.w5_input_filtro_local, 1, 7, 1, 1)
@@ -858,6 +1058,7 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w5_label_filtro_estado, 2, 0, 1, 1)
         self.layout.addWidget(self.w5_combobox_filtro_estado, 2, 1, 1, 1)
         self.layout.addWidget(self.w5_checkbox_filtro_estado, 2, 2, 1, 1)
+        self.layout.addWidget(self.w5_checkbox_retro, 2, 4, 1, 1)
         self.layout.addWidget(self.w5_table_eventos_confirmados, 3, 0, 1, 12)
         self.layout.addWidget(self.w5_button_consultar_festa, 4, 0, 1, 3)
         self.layout.addWidget(self.w5_button_adicionar_festa, 4, 3, 1, 3)
@@ -915,7 +1116,7 @@ class MyWindow(QMainWindow):
             n_festas = []
             for n in select1:
                 n_festas.append(n[0])
-            if n_orcamento not in n_festas:
+            if int(n_orcamento) not in n_festas:
                 cur_tw.execute(
                     f"""
                     INSERT INTO FESTAS (N_ORCAMENTO)
@@ -928,6 +1129,8 @@ class MyWindow(QMainWindow):
                     VALUES ({n_orcamento})
                     """
                 )
+            else:
+                return MyMessageBox('Orçamento já Registrado!')
             self.w_nova_festa = MyWindow('Nova Festa', usuario=self.usuario)
             self.w_nova_festa.w6_festa(int(n_orcamento), table)
 
