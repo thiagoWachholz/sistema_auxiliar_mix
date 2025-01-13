@@ -45,6 +45,30 @@ class Produto():
         self.quantidade = quantidade
         self.categoria = categoria
 
+    def get_product_data(self):
+        cur_mc.execute(
+            f"""
+            SELECT AC03DESC, AC03REF, AN03PRC1
+            FROM MC03PRO
+            WHERE AC03CODI = '{self.codigo}'
+            """
+        )
+        select = cur_mc.fetchone()
+        self.nome = select[0]
+        self.ref = select[1]
+        self.preco = select[2]
+
+        cur_tw.execute(
+            f"""
+            SELECT IMAGEM, CATEGORIA
+            FROM PRODUTOS
+            WHERE CODIGO = '{self.codigo}'
+            """
+        )
+        select = cur_tw.fetchone()
+        self.image = select[0]
+        self.categoria = select[1]
+
     def change_categoria(self, nova_categoria):
         self.categoria = nova_categoria
         cur_tw.execute(
@@ -162,7 +186,7 @@ class Festa():
 
         cur_mc.execute(
             f"""
-            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR
+            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR, AC190_NOMEPRO
             FROM MC191_ITEMORCAMENTO
             WHERE AN191_PEDIDO = {self.numero}
             """
@@ -177,7 +201,10 @@ class Festa():
                 WHERE AC03CODI = '{item[0]}'
             """)
             select_produtos1 = cur_mc.fetchone()
-            self.produtos[item[0]].append(select_produtos1[0])
+            if item[3] == '':
+                self.produtos[item[0]].append(select_produtos1[0])
+            else:
+                self.produtos[item[0]].append(item[3])
             self.produtos[item[0]].append(select_produtos1[1])
             self.produtos[item[0]].append(float(item[1]))
             self.produtos[item[0]].append(float(item[2]))
@@ -268,7 +295,7 @@ class Festa():
     def get_produtos(self):
         cur_mc.execute(
             f"""
-            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR
+            SELECT AC191_PRODUTO, AN191_QTDE, AN191_VALOR,
             FROM MC191_ITEMORCAMENTO
             WHERE AN191_PEDIDO = {self.numero}
             """
@@ -297,6 +324,16 @@ class Festa():
             """
         )
         conn_mc.commit()
+
+    def set_estado(self, estado):
+        cur_tw.execute(
+            f"""
+            UPDATE FESTAS_CONFIRMADAS
+            SET ESTADO = '{estado}'
+            WHERE N_ORCAMENTO = {self.numero}
+            """
+        )
+        conn_tw.commit()
 
 
 class Entregador():
@@ -631,7 +668,6 @@ def get_festas_confirmadas(passados=False, order_by='DATA', n_orcamento=None,
             if i != dias-1:
                 cod_sql += ' OR'
     cod_sql += ''' ORDER BY C.ESTADO ASC'''
-    print(cod_sql)
     cur_tw.execute(cod_sql)
     select = cur_tw.fetchall()
     for festa in select:

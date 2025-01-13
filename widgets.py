@@ -2,6 +2,7 @@
 import datetime
 import sqlite3
 import sys
+import webbrowser
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIntValidator, QKeyEvent, QPixmap
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QTableWidget, QTableWidgetItem, QTextEdit,
                                QWidget)
 
+import pdfs
 from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
 from objects import (Categoria, Cliente, Entregador, Festa, LocalFesta,
                      TipoFesta, Usuario, caminho_images, get_categorias,
@@ -743,6 +745,10 @@ class MyWindow(QMainWindow):
 
     def w5_eventos(self):
 
+        def show_w5_impressao(table):
+            self.w5_p = MyWindow('Impressão', usuario=self.usuario)
+            self.w5_p.w5_impressao_festa(table)
+
         def show_w5_entregadores():
             self.w5_e = MyWindow('Entregadores', usuario=self.usuario)
             self.w5_e.w5_entregadores()
@@ -803,6 +809,15 @@ class MyWindow(QMainWindow):
                                        anteriores=anteriores)
             )
 
+        def update_estado(table, estado):
+
+            print(table.currentRow())
+
+            n_festa = table.item(table.currentRow(), 0).text()
+            n_festa = int(n_festa)
+
+            Festa(n_festa).set_estado(estado)
+
         # Menu da janela
         self.w5_menu_bar = QMenuBar(self)
         self.setMenuBar(self.w5_menu_bar)
@@ -840,7 +855,10 @@ class MyWindow(QMainWindow):
         self.w5_button_adicionar_festa = MyButton('Adicionar Festa')
         self.w5_button_remover_festa = MyButton('Remover Festa')
         self.w5_button_imprimir_festa = MyButton('Imprimir Festa')
-        self.w5_button_impressoes = MyButton('Impressões')
+        self.w5_button_nao_confirmado = MyButton('Não Confirmado')
+        self.w5_button_confirmado = MyButton('Confirmado')
+        self.w5_button_entregue = MyButton('Entregue')
+        self.w5_button_recolhido = MyButton('Recolhido')
 
         # Propriedades dos Widgets
         self.w5_input_filtro_data.setInputMask('00/00/0000')
@@ -874,6 +892,22 @@ class MyWindow(QMainWindow):
         )
         self.w5_button_remover_festa.clicked.connect(
             lambda: delete_festa(self.w5_table_eventos_confirmados)
+        )
+        self.w5_button_nao_confirmado.clicked.connect(
+            lambda: update_estado(self.w5_table_eventos_confirmados,
+                                  'Não Confirmado')
+        )
+        self.w5_button_confirmado.clicked.connect(
+            lambda: update_estado(self.w5_table_eventos_confirmados,
+                                  'Confirmado')
+        )
+        self.w5_button_entregue.clicked.connect(
+            lambda: update_estado(self.w5_table_eventos_confirmados,
+                                  'Entregue')
+        )
+        self.w5_button_recolhido.clicked.connect(
+            lambda: update_estado(self.w5_table_eventos_confirmados,
+                                  'Recolhido')
         )
         self.w5_input_filtro_norcamento.textChanged.connect(
             lambda: att_tabela(self.w5_table_eventos_confirmados,
@@ -1040,6 +1074,71 @@ class MyWindow(QMainWindow):
                                self.w5_checkbox_filtro_estado.isChecked(),
                                self.w5_checkbox_retro.isChecked())
         )
+        self.w5_button_imprimir_festa.clicked.connect(
+            lambda: show_w5_impressao(
+                self.w5_table_eventos_confirmados
+            )
+        )
+        self.w5_button_nao_confirmado.clicked.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_button_confirmado.clicked.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_button_entregue.clicked.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
+        self.w5_button_recolhido.clicked.connect(
+            lambda: att_tabela(self.w5_table_eventos_confirmados,
+                               self.w5_input_filtro_norcamento.text(),
+                               self.w5_checkbox_filtro_norcamento.isChecked(),
+                               self.w5_checkbox_todas_festas.isChecked(),
+                               self.w5_combobox_periodo.currentText(),
+                               self.w5_checkbox_filtro_data.isChecked(),
+                               self.w5_input_filtro_local.text(),
+                               self.w5_checkbox_filtro_local.isChecked(),
+                               self.w5_input_filtro_nome.text(),
+                               self.w5_checkbox_filtro_nome.isChecked(),
+                               self.w5_combobox_filtro_estado.currentText(),
+                               self.w5_checkbox_filtro_estado.isChecked(),
+                               self.w5_checkbox_retro.isChecked())
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w5_label_titulo_eventos, 0, 0, 1, 12)
@@ -1064,9 +1163,65 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w5_button_adicionar_festa, 4, 3, 1, 3)
         self.layout.addWidget(self.w5_button_remover_festa, 4, 6, 1, 3)
         self.layout.addWidget(self.w5_button_imprimir_festa, 4, 9, 1, 3)
-        self.layout.addWidget(self.w5_button_impressoes, 5, 0, 1, 12)
+        self.layout.addWidget(self.w5_button_nao_confirmado, 5, 0, 1, 3)
+        self.layout.addWidget(self.w5_button_confirmado, 5, 3, 1, 3)
+        self.layout.addWidget(self.w5_button_entregue, 5, 6, 1, 3)
+        self.layout.addWidget(self.w5_button_recolhido, 5, 9, 1, 3)
 
         self.showMaximized()
+
+    def w5_impressao_festa(self, table):
+
+        def orcamento_cliente(n_festa, entrada, tipo=0, valor_pago=0):
+
+            if tipo == 0:
+                festa = pdfs.get_print_festa_cliente(n_festa, entrada)
+            if tipo == 1:
+                festa = pdfs.get_print_festa_entregador(n_festa)
+            if tipo == 2:
+                try:
+                    float(valor_pago)
+                except TypeError:
+                    MyMessageBox('Valor pago Incorreto')
+                    return
+                festa = pdfs.get_print_consumo(n_festa, float(valor_pago))
+            webbrowser.open(festa)
+
+        n_festa = table.item(table.currentRow(), 0).text()
+        n_festa = int(n_festa)
+
+        self.w5_button_orcamento = MyButton('Orçamento')
+        self.w5_checkbox_entrada = QCheckBox('Informar valor de entrada')
+        self.w5_button_orcamento_entregador = MyButton(
+            'Orçamento para Entregador')
+        self.w5_button_consumo = MyButton('Consumo')
+        self.w5_label_valor_pago = QLabel('Valor pago:')
+        self.w5_input_valor_pago = QLineEdit()
+
+        self.w5_label_valor_pago.setAlignment(Qt.AlignRight)
+
+        self.w5_button_orcamento.clicked.connect(
+            lambda: orcamento_cliente(n_festa,
+                                      self.w5_checkbox_entrada.isChecked(),
+                                      tipo=0)
+        )
+        self.w5_button_orcamento_entregador.clicked.connect(
+            lambda: orcamento_cliente(n_festa, False, tipo=1)
+        )
+        self.w5_button_consumo.clicked.connect(
+            lambda: orcamento_cliente(
+                n_festa, False, tipo=2,
+                valor_pago=self.w5_input_valor_pago.text())
+        )
+
+        self.layout.addWidget(self.w5_button_orcamento, 0, 0, 1, 2)
+        self.layout.addWidget(self.w5_checkbox_entrada, 0, 2, 1, 1)
+        self.layout.addWidget(self.w5_button_orcamento_entregador, 1, 0, 1, 3)
+        self.layout.addWidget(self.w5_button_consumo, 2, 0, 1, 1)
+        self.layout.addWidget(self.w5_label_valor_pago, 2, 1, 1, 1)
+        self.layout.addWidget(self.w5_input_valor_pago, 2, 2, 1, 1)
+
+        self.show()
 
     def w5_nova_festa(self, table):
 
@@ -1478,9 +1633,11 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
                 input_prod.setText(f'{produto.nome} {produto.ref}')
                 input_qtd.setText('1')
                 if checkbox_consignado.isChecked():
-                    input_valor.setText(f'{produto.preco_consignado}')
+                    valor = f'{produto.preco_consignado:.2f}'
+                    input_valor.setText(valor.replace('.', ','))
                 else:
-                    input_valor.setText(f'{produto.preco}')
+                    valor = f'{produto.preco:.2f}'
+                    input_valor.setText(valor.replace('.', ','))
             else:
                 MyMessageBox('Produto não encontrado!')
 
@@ -1490,16 +1647,21 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
 
         def add_produto_into_festa(table: MyTable, n_orcamento, input_cod,
                                    input_name, input_qtd, input_valor):
-            cur_mc.execute(
-                f"""
-                INSERT INTO MC191_ITEMORCAMENTO
-                (AN191_PEDIDO, AC191_PRODUTO, AN191_QTDE, AN191_VALOR,
-                AC190_NOMEPRO, AN191_EMPRESA)
-                VALUES
-                ({n_orcamento},'{input_cod.text()}',{input_qtd.text()},
-                {input_valor.text()},'{input_name.text()}',0)
-                """
-            )
+            valor = float((f'{input_valor.text()}').replace(',', '.'))
+            qtd = int((f'{input_qtd.text()}').replace(',', '.'))
+            try:
+                cur_mc.execute(
+                    f"""
+                    INSERT INTO MC191_ITEMORCAMENTO
+                    (AN191_PEDIDO, AC191_PRODUTO, AN191_QTDE, AN191_VALOR,
+                    AC190_NOMEPRO, AN191_EMPRESA)
+                    VALUES
+                    ({n_orcamento},'{input_cod.text()}',{qtd},
+                    {valor},'{input_name.text()}',0)
+                    """
+                )
+            except ValueError:
+                MyMessageBox('Valores incorretos!')
             conn_mc.commit()
             table.tabela_produtos_festa(n_orcamento)
             input_cod.setText('')
@@ -1844,13 +2006,9 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_input_cod_produto.setPlaceholderText('Código')
         self.w6_input_cod_recolhedor.setPlaceholderText('Código')
         self.w6_input_cod_tipo_festa.setPlaceholderText('Código')
-        self.w6_int_validator = QIntValidator()
-        self.w6_input_cod_local_evento.setValidator(self.w6_int_validator)
         self.w6_input_celular_cliente.setEnabled(False)
         self.w6_input_cod_produto.setInputMask('99.9999')
         self.w6_input_data_evento.setInputMask('00/00/0000')
-        self.w6_input_qtd_pessoas.setInputMask('0000')
-        self.w6_input_qtd_alcoolicos.setInputMask('0000')
         self.w6_combobox_estado_festa.addItem('Não Confirmado')
         self.w6_combobox_estado_festa.addItem('Confirmado')
         self.w6_combobox_estado_festa.addItem('Entregue')
@@ -1859,6 +2017,13 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_textarea_obs2.setMaximumSize(400, 80)
         if n_orcamento is not None:
             festa_atual = Festa(n_orcamento)
+            self.w6_int_validator = QIntValidator()
+            self.w6_input_cod_local_evento.setValidator(self.w6_int_validator)
+            self.w6_input_cod_entregador.setValidator(self.w6_int_validator)
+            self.w6_input_cod_recolhedor.setValidator(self.w6_int_validator)
+            self.w6_input_cod_tipo_festa.setValidator(self.w6_int_validator)
+            self.w6_input_qtd_alcoolicos.setValidator(self.w6_int_validator)
+            self.w6_input_qtd_pessoas.setValidator(self.w6_int_validator)
             if festa_atual.cod_cliente != 0:
                 self.w6_label_cod_cliente.setText(
                     f'Código: {festa_atual.cod_cliente}')
