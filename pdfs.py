@@ -124,7 +124,10 @@ def get_print_festa_cliente(n_festa, entrada=False):
 
     dados_tabela_info = [
         ['Mix Bebidas', 'CNPJ: 31.847.694/0001-20'],
-        ['Rua Cap. Adolfo Castro, 527 | Vila Nova | Camaquã', 'CEP: 96783-000']
+        ['Rua Cap. Adolfo Castro, 527 | Vila Nova | Camaquã',
+         'CEP: 96783-000'],
+        ['Fone Whats: (51) 99706-3311', 'Plantão: (00) 00000-0000'],
+        ['E-mail: thiagomixbebidas@gmail.com', '']
     ]
     tabela_info = Table(dados_tabela_info)
 

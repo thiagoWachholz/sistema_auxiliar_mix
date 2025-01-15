@@ -16,8 +16,8 @@ else:
     with open(database_path, 'w') as arquivo:
         database_name = ['a', 'b']
         json.dump(database_name, arquivo)
-database_name_mc = database_name[0] + '\\MCSISTEMASFB.FDB'
-database_name_tw = database_name[0] + '\\banco_tw.db'
+database_name_mc = database_name[0]
+database_name_tw = database_name[1]
 
 username = "SYSDBA"
 password = "masterkey"

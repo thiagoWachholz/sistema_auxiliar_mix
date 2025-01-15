@@ -117,6 +117,7 @@ class Festa():
         self.obs1 = None
         self.obs2 = None
         self.produtos = {}
+        self.total_orcamento = 0
         self.consumo = {}
         self.valor_consumo = 0
         self.avaria = {}
@@ -291,6 +292,11 @@ class Festa():
         select = cur_mc.fetchone()
         self.obs1 = select[0]
         self.obs2 = select[1]
+
+        for produto in self.produtos:
+            total_produto = self.produtos[produto][3] * \
+                self.produtos[produto][4]
+            self.total_orcamento += total_produto
 
     def get_produtos(self):
         cur_mc.execute(

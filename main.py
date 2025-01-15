@@ -5,7 +5,6 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from objects import check_produtos, get_usuarios
-# from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
 from widgets import MyWindow
 
 check_produtos()

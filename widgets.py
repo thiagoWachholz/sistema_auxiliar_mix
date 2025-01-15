@@ -453,7 +453,7 @@ class MyWindow(QMainWindow):
         self.button_eventos = QPushButton('Eventos')
         self.button_produtos = QPushButton('Produtos')
         self.button_relatorios = QPushButton('Relatórios')
-        self.label_duvida = QLabel('Qualquer dúvida, contatar o Thiago!')
+        self.label_duvida = QLabel('')
 
         # Signals dos widgets
         acao_usuarios.triggered.connect(lambda: show_w3())
@@ -461,7 +461,8 @@ class MyWindow(QMainWindow):
         self.button_eventos.clicked.connect(lambda: show_w5())
 
         # Layout da janela
-        self.layout.addWidget(self.dev_name, 0, 1, 1, 1)
+        self.layout.addWidget(self.dev_name, 0, 1, 1, 1,
+                              alignment=Qt.AlignCenter)
         self.layout.addWidget(self.button_eventos, 1, 1, 1, 1)
         self.layout.addWidget(self.button_produtos, 2, 1, 1, 1)
         self.layout.addWidget(self.button_relatorios, 3, 1, 1, 1)
@@ -887,6 +888,9 @@ class MyWindow(QMainWindow):
         self.w5_button_consultar_festa.clicked.connect(
             lambda: show_w6_festa(self.w5_table_eventos_confirmados)
         )
+        self.w5_table_eventos_confirmados.doubleClicked.connect(
+            lambda: show_w6_festa(self.w5_table_eventos_confirmados)
+        )
         self.w5_button_adicionar_festa.clicked.connect(
             lambda: show_w5_nova_festa(self.w5_table_eventos_confirmados)
         )
@@ -1181,7 +1185,7 @@ class MyWindow(QMainWindow):
             if tipo == 2:
                 try:
                     float(valor_pago)
-                except TypeError:
+                except ValueError:
                     MyMessageBox('Valor pago Incorreto')
                     return
                 festa = pdfs.get_print_consumo(n_festa, float(valor_pago))
@@ -1605,13 +1609,14 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
                 input_text.setEnabled(False)
 
         def att_janela(festa, label):
-            valor_total = 0
-            produtos = festa.produtos
-            for produto in festa.produtos:
-                total_produto = produtos[produto][3] * produtos[produto][4]
-                valor_total += total_produto
+            # valor_total = 0
+            # produtos = festa.produtos
+            # for produto in festa.produtos:
+            #     total_produto = produtos[produto][3] * produtos[produto][4]
+            #     valor_total += total_produto
             label.setText(
-                (f'Valor Total: R${valor_total:.2f}').replace('.', ',')
+                (f'Valor Total: R${festa.total_orcamento:.2f}').replace(
+                    '.', ',')
             )
 
         def remove_produto(n_orcamento, table: MyTable):
@@ -1918,7 +1923,24 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             s3 = festa.valor_avaria
             total.setText((f'Total: R${(s1+s2+s3):.2f}').replace('.', ','))
 
-            # Widgets da janela
+        def limpar_dados_cliente(label_cod_cliente, input_nome_cliente,
+                                 input_fone, input_cel):
+
+            label_cod_cliente.setText('')
+            input_nome_cliente.setText('')
+            input_fone.setText('')
+            input_cel.setText('')
+
+            input_nome_cliente.setEnabled(True)
+            input_fone.setEnabled(True)
+            input_cel.setEnabled(True)
+
+        def show_w_adjust_product(table, n_orcamento, label_total):
+            self.wap = MyWindow(
+                'Ajustar Produto', usuario=self.usuario)
+            self.wap.w_adjust_product(table, n_orcamento, label_total)
+
+        # Widgets da janela
         self.w6_label_n_orcamento = QLabel(
             f'Número do Orçamento: {n_orcamento}')
         self.w6_label_cod_cliente = QLabel('')
@@ -1929,6 +1951,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_input_telefone_cliente = QLineEdit()
         self.w6_label_celular_cliente = QLabel('Celular do Cliente:')
         self.w6_input_celular_cliente = QLineEdit()
+        self.w6_button_limpar_cliente = QPushButton('Limpar dados de cliente')
         self.w6_label_data_evento = QLabel('Data do Evento:')
         self.w6_input_data_evento = QLineEdit()
         self.w6_label_local_evento = QLabel('Local do Evento:')
@@ -2087,6 +2110,9 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             self.w6_label_valor_total_consumo.setText(
                 (f'Total: R${(s1 + s2 + s3):.2f}').replace('.', ',')
             )
+            self.w6_combobox_estado_festa.setCurrentText(
+                festa_atual.estado
+            )
 
         # Ações dos Widgets
         self.w6_table_produtos.tabela_produtos_festa(n_orcamento=n_orcamento)
@@ -2095,6 +2121,12 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
                              self.w6_label_cod_cliente,
                              self.w6_input_telefone_cliente,
                              self.w6_input_celular_cliente)
+        )
+        self.w6_button_limpar_cliente.clicked.connect(
+            lambda: limpar_dados_cliente(self.w6_label_cod_cliente,
+                                         self.w6_input_nome_cliente,
+                                         self.w6_input_telefone_cliente,
+                                         self.w6_input_celular_cliente)
         )
         self.w6_input_cod_local_evento.textChanged.connect(
             lambda: att_input(self.w6_input_cod_local_evento,
@@ -2251,6 +2283,11 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w6_button_consultar_avaria.clicked.connect(
             lambda: show_w_consumo(n_orcamento, 'Avaria')
         )
+        self.w6_table_produtos.doubleClicked.connect(
+            lambda: show_w_adjust_product(self.w6_table_produtos,
+                                          n_orcamento,
+                                          self.w6_label_valor_total)
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w6_label_n_orcamento, 0, 0, 1, 12)
@@ -2262,6 +2299,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_input_telefone_cliente, 1, 6, 1, 1)
         self.layout.addWidget(self.w6_label_celular_cliente, 1, 7, 1, 1)
         self.layout.addWidget(self.w6_input_celular_cliente, 1, 8, 1, 1)
+        self.layout.addWidget(self.w6_button_limpar_cliente, 1, 9, 1, 1)
         self.layout.addWidget(self.w6_label_data_evento, 2, 0, 1, 1)
         self.layout.addWidget(self.w6_input_data_evento, 2, 1, 1, 1)
         self.layout.addWidget(self.w6_label_local_evento, 2, 2, 1, 1)
@@ -2327,6 +2365,89 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w6_button_sair, 15, 6, 1, 6)
 
         self.showMaximized()
+
+    def w_adjust_product(self, table, n_orcamento, label_total):
+
+        def check_valores(input_qtd, input_valor):
+
+            qtd = (input_qtd.text()).replace(',', '.')
+            valor = (input_valor.text()).replace(',', '.')
+
+            try:
+                float(qtd)
+                float(valor)
+                return True
+            except ValueError:
+                return False
+
+        def att_valores(input_qtd, input_valor, table: MyTable, n_orcamento,
+                        cod, label_total):
+
+            if check_valores(input_qtd, input_valor):
+
+                qtd = float((input_qtd.text()).replace(',', '.'))
+                valor = float((input_valor.text()).replace(',', '.'))
+
+                cur_mc.execute(
+                    f"""
+                    UPDATE MC191_ITEMORCAMENTO
+                    SET AN191_QTDE = {qtd},
+                        AN191_VALOR = {valor}
+                    WHERE AC191_PRODUTO = {cod}
+                    AND AN191_PEDIDO = {n_orcamento}
+                    """
+                )
+                conn_mc.commit()
+
+                table.tabela_produtos_festa(n_orcamento)
+                label_total.setText(
+                    f'Valor Total: R${Festa(n_orcamento).total_orcamento:.2f}')
+
+            else:
+                MyMessageBox('Valores Incorretos!')
+
+        item_cod = table.item(table.currentRow(), 0).text()
+        item_nome = table.item(table.currentRow(), 1).text()
+        item_qtd = table.item(table.currentRow(), 3).text()
+        item_valor = (table.item(table.currentRow(), 4).text()
+                      ).replace('R$', '')
+
+        self.wap_label_cod_produto = QLabel('Código')
+        self.wap_label_nome_produto = QLabel('Nome Produto')
+        self.wap_label_qtd_produto = QLabel('Quantidade: ')
+        self.wap_input_qtd_produto = QLineEdit()
+        self.wap_label_valor_produto = QLabel('Valor (R$): ')
+        self.wap_input_valor_produto = QLineEdit()
+        self.wap_button_confirmar = MyButton('Confirmar')
+
+        self.wap_button_confirmar.clicked.connect(
+            lambda: att_valores(
+                self.wap_input_qtd_produto,
+                self.wap_input_valor_produto,
+                table,
+                n_orcamento,
+                item_cod,
+                label_total
+            )
+        )
+        self.wap_button_confirmar.clicked.connect(
+            lambda: self.close()
+        )
+
+        self.wap_label_cod_produto.setText(f'{item_cod}')
+        self.wap_label_nome_produto.setText(f'{item_nome}')
+        self.wap_input_qtd_produto.setText(f'{item_qtd}')
+        self.wap_input_valor_produto.setText(f'{item_valor}')
+
+        self.layout.addWidget(self.wap_label_cod_produto, 0, 0, 1, 1)
+        self.layout.addWidget(self.wap_label_nome_produto, 0, 1, 1, 1)
+        self.layout.addWidget(self.wap_label_qtd_produto, 1, 0, 1, 1)
+        self.layout.addWidget(self.wap_input_qtd_produto, 1, 1, 1, 1)
+        self.layout.addWidget(self.wap_label_valor_produto, 2, 0, 1, 1)
+        self.layout.addWidget(self.wap_input_valor_produto, 2, 1, 1, 1)
+        self.layout.addWidget(self.wap_button_confirmar, 3, 0, 1, 2)
+
+        self.show()
 
     def w_search_clientes(self, input_target, label_target, input_tel,
                           input_cel):
@@ -2532,14 +2653,14 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.w_table_consumo.tabela_produtos_festa(n_orcamento, consumo,
                                                    locacao, avaria)
         self.w_label_total_consumo.setText(
-            (f'R${valor_total:.2f}').replace('.', ',')
+            (f'Total: R${valor_total:.2f}').replace('.', ',')
         )
 
         self.layout.addWidget(self.w_label_consumo, 0, 0, 1, 12)
         self.layout.addWidget(self.w_table_consumo, 1, 0, 1, 12)
         self.layout.addWidget(self.w_label_total_consumo, 2, 0, 1, 12)
 
-        self.resize(1000, 350)
+        self.resize(750, 750)
         self.show()
 
 
