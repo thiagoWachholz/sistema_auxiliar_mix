@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
                                 Table, TableStyle)
 
+from database_connection import cur_tw
 from objects import Festa, Produto
 
 
@@ -547,7 +550,8 @@ def get_print_consumo(n_festa, valor_pago=0):
         (f'<b>Valor pago:</b> R${valor_pago:.2f}').replace('.', ','),
         style=styles['BodyText'])
     p_restante = Paragraph(
-        (f'<b>Valor restante:</b> R${total_festa-valor_pago:.2f}').replace('.', ','),
+        (f'<b>Valor restante:</b> R${total_festa-valor_pago:.2f}').replace(
+            '.', ','),
         style=styles['BodyText'])
 
     tabela_valores = Table(
@@ -576,7 +580,311 @@ def get_print_consumo(n_festa, valor_pago=0):
     return nome_arquivo
 
 
+def get_relatorio_produtos_confirmados(dt_inicio, dt_fim, local_festa=None,
+                                       tipo_festa=None):
+
+    qtd_dias = dt_fim - dt_inicio
+
+    dias = []
+    for i in range(qtd_dias.days+1):
+        dia_to_add = dt_inicio + timedelta(days=i)
+        dia = dia_to_add.day
+        mes = dia_to_add.month
+        ano = dia_to_add.year
+        dias.append(f'{ano}-{mes}-{dia}')
+
+    script_base_sql = """
+        SELECT N_ORCAMENTO
+        FROM FESTAS
+        WHERE 1 = 1
+    """
+
+    script_base_sql += " AND"
+    for dia in dias:
+        script_base_sql += f" DATA = '{dia}'"
+        if dia != dias[-1]:
+            script_base_sql += " OR"
+
+    cur_tw.execute(script_base_sql)
+    select = cur_tw.fetchall()
+
+    rel_produtos = {}
+    for item in select:
+        festa = Festa(item[0])
+        continuar = True
+        if local_festa is not None:
+            if festa.local != local_festa:
+                continuar = False
+        if tipo_festa is not None:
+            if festa.tipo != tipo_festa:
+                continuar = False
+        if continuar:
+            for produto in festa.produtos:
+                if produto not in rel_produtos:
+                    rel_produtos[produto] = []
+                    rel_produtos[produto].append(festa.produtos[produto][0])
+                    rel_produtos[produto].append(festa.produtos[produto][1])
+                    rel_produtos[produto].append(festa.produtos[produto][2])
+                    rel_produtos[produto].append(festa.produtos[produto][3])
+                else:
+                    rel_produtos[produto][3] += festa.produtos[produto][3]
+
+    rel_produtos = dict(sorted(rel_produtos.items()))
+
+    nome_arquivo = "Relatório Produtos Confirmados.pdf"
+
+    doc = SimpleDocTemplate(nome_arquivo, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    titulo = Paragraph(
+        'Relatório de Produtos Confirmados para Eventos - Mix Bebidas',
+        styles['Heading2']
+    )
+    dt_inicio_str = dt_inicio.strftime("%d/%m/%Y")
+    dt_fim_str = dt_fim.strftime("%d/%m/%Y")
+    subtitulo = Paragraph(
+        f'Período: {dt_inicio_str} até {dt_fim_str}'
+    )
+
+    table = [['Código', 'Descrição', 'Referência', 'Quantidade']]
+    table_conteudo = [[rel_produtos[i][0], rel_produtos[i][1],
+                       rel_produtos[i][2],
+                       rel_produtos[i][3]] for i in rel_produtos]
+    for i in table_conteudo:
+        table.append(i)
+
+    tabela_produtos_confirmados = Table(table)
+    tabela_produtos_confirmados.setStyle(
+        TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT')
+        ])
+    )
+
+    conteudo = []
+
+    conteudo.append(titulo)
+    conteudo.append(subtitulo)
+    if local_festa is not None:
+        conteudo.append(Paragraph(f'Local de Festa: {local_festa}'))
+    if tipo_festa is not None:
+        conteudo.append(Paragraph(f'Tipo de Festa: {tipo_festa}'))
+    conteudo.append(Spacer(1, 12))
+    conteudo.append(tabela_produtos_confirmados)
+
+    doc.build(conteudo)
+
+    return nome_arquivo
+
+
+def get_relatorio_media_consumo(dt_inicio, dt_fim, local_festa=None,
+                                tipo_festa=None):
+    qtd_dias = dt_fim - dt_inicio
+
+    dias = []
+    for i in range(qtd_dias.days+1):
+        dia_to_add = dt_inicio + timedelta(days=i)
+        dia = dia_to_add.day
+        mes = dia_to_add.month
+        ano = dia_to_add.year
+        dias.append(f'{ano}-{mes}-{dia}')
+
+    script_base_sql = """
+        SELECT N_ORCAMENTO
+        FROM FESTAS
+        WHERE 1 = 1
+    """
+
+    script_base_sql += " AND"
+    for dia in dias:
+        script_base_sql += f" DATA = '{dia}'"
+        if dia != dias[-1]:
+            script_base_sql += " OR"
+
+    cur_tw.execute(script_base_sql)
+    select = cur_tw.fetchall()
+
+    rel_produtos = {}
+    for item in select:
+        festa = Festa(item[0])
+        continuar = True
+        if local_festa is not None:
+            if festa.local != local_festa:
+                continuar = False
+        if tipo_festa is not None:
+            if festa.tipo != tipo_festa:
+                continuar = False
+        if continuar:
+            for produto in festa.consumo:
+                if produto not in rel_produtos:
+                    rel_produtos[produto] = []
+                    rel_produtos[produto].append(festa.consumo[produto][0])
+                    rel_produtos[produto].append(festa.consumo[produto][1])
+                    rel_produtos[produto].append(festa.consumo[produto][2])
+                    rel_produtos[produto].append(festa.consumo[produto][3])
+                    rel_produtos[produto].append(festa.qtd_pessoas)
+                    rel_produtos[produto].append(0)
+                else:
+                    rel_produtos[produto][3] += festa.consumo[produto][3]
+                    rel_produtos[produto][4] += festa.qtd_pessoas
+
+    for produto in rel_produtos:
+        rel_produtos[produto][5] = round(
+            rel_produtos[produto][4]/rel_produtos[produto][3], 2)
+        rel_produtos[produto][5] = f'1 para {rel_produtos[produto][5]}'
+
+    rel_produtos = dict(sorted(rel_produtos.items()))
+    print(rel_produtos)
+
+    nome_arquivo = "Relatório Média Consumo.pdf"
+
+    doc = SimpleDocTemplate(nome_arquivo, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    titulo = Paragraph(
+        'Relatório de Média de Consumo - Mix Bebidas',
+        styles['Heading2']
+    )
+    dt_inicio_str = dt_inicio.strftime("%d/%m/%Y")
+    dt_fim_str = dt_fim.strftime("%d/%m/%Y")
+    subtitulo = Paragraph(
+        f'Período: {dt_inicio_str} até {dt_fim_str}'
+    )
+
+    table = [['Código', 'Descrição', 'Ref', 'Qtd', 'Pessoas',
+              'Média Pessoas/Qtd']]
+    table_conteudo = [[rel_produtos[i][0], rel_produtos[i][1],
+                       rel_produtos[i][2],
+                       rel_produtos[i][3],
+                       rel_produtos[i][4],
+                       rel_produtos[i][5]] for i in rel_produtos]
+    for i in table_conteudo:
+        table.append(i)
+
+    tabela_produtos_confirmados = Table(table)
+    tabela_produtos_confirmados.setStyle(
+        TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT')
+        ])
+    )
+
+    conteudo = []
+
+    conteudo.append(titulo)
+    conteudo.append(subtitulo)
+    if local_festa is not None:
+        conteudo.append(Paragraph(f'Local de Festa: {local_festa}'))
+    if tipo_festa is not None:
+        conteudo.append(Paragraph(f'Tipo de Festa: {tipo_festa}'))
+    conteudo.append(Spacer(1, 12))
+    conteudo.append(tabela_produtos_confirmados)
+
+    doc.build(conteudo)
+
+    return nome_arquivo
+
+
+def get_relatorio_festas_confirmadas(dt_inicio, dt_fim, local_festa=None,
+                                     tipo_festa=None):
+
+    qtd_dias = dt_fim - dt_inicio
+
+    dias = []
+    for i in range(qtd_dias.days+1):
+        dia_to_add = dt_inicio + timedelta(days=i)
+        dia = dia_to_add.day
+        mes = dia_to_add.month
+        ano = dia_to_add.year
+        dias.append(f'{ano}-{mes}-{dia}')
+
+    script_base_sql = """
+        SELECT N_ORCAMENTO
+        FROM FESTAS
+        WHERE 1 = 1
+    """
+
+    script_base_sql += " AND"
+    for dia in dias:
+        script_base_sql += f" DATA = '{dia}'"
+        if dia != dias[-1]:
+            script_base_sql += " OR"
+
+    cur_tw.execute(script_base_sql)
+    select = cur_tw.fetchall()
+
+    rel_festas = {}
+    for item in select:
+        festa = Festa(item[0])
+        rel_festas[item[0]] = festa
+
+    rel_festas = dict(sorted(rel_festas.items(),
+                             key=lambda item: item[1].data))
+
+    rel_festas_2 = {}
+    for festa in rel_festas:
+        continuar = True
+        if local_festa is not None:
+            if rel_festas[festa].local != local_festa:
+                continuar = False
+        if tipo_festa is not None:
+            if rel_festas[festa].tipo != tipo_festa:
+                continuar = False
+        if continuar:
+            rel_festas_2[festa] = []
+            rel_festas_2[festa].append(rel_festas[festa].numero)
+            rel_festas_2[festa].append(rel_festas[festa].nome)
+            rel_festas_2[festa].append(rel_festas[festa].local)
+            rel_festas_2[festa].append(rel_festas[festa].tipo)
+            rel_festas_2[festa].append(rel_festas[festa].qtd_pessoas)
+
+    nome_arquivo = "Relatório Festas Confirmadas.pdf"
+
+    doc = SimpleDocTemplate(nome_arquivo, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    titulo = Paragraph(
+        'Relatório de Festas Confirmadas - Mix Bebidas',
+        styles['Heading2']
+    )
+    dt_inicio_str = dt_inicio.strftime("%d/%m/%Y")
+    dt_fim_str = dt_fim.strftime("%d/%m/%Y")
+    subtitulo = Paragraph(
+        f'Período: {dt_inicio_str} até {dt_fim_str}'
+    )
+
+    table = [['Número', 'Cliente', 'Local', 'Tipo', 'Pessoas']]
+    table_conteudo = [[rel_festas_2[i][0], rel_festas_2[i][1],
+                       rel_festas_2[i][2],
+                       rel_festas_2[i][3],
+                       rel_festas_2[i][4]] for i in rel_festas_2]
+    for i in table_conteudo:
+        table.append(i)
+
+    tabela_festas_confirmadas = Table(table)
+    tabela_festas_confirmadas.setStyle(
+        TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT')
+        ])
+    )
+
+    conteudo = []
+
+    conteudo.append(titulo)
+    conteudo.append(subtitulo)
+    if local_festa is not None:
+        conteudo.append(Paragraph(f'Local de Festa: {local_festa}'))
+    if tipo_festa is not None:
+        conteudo.append(Paragraph(f'Tipo de Festa: {tipo_festa}'))
+    conteudo.append(Spacer(1, 12))
+    conteudo.append(tabela_festas_confirmadas)
+
+    doc.build(conteudo)
+
+    return nome_arquivo
+
+
 if __name__ == "__main__":
-    get_print_festa_cliente(10711, entrada=True)
-    get_print_festa_entregador(10711)
-    get_print_consumo(10711)
+    get_relatorio_festas_confirmadas(
+        datetime(2024, 1, 1), datetime(2025, 1, 1))

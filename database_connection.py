@@ -149,6 +149,9 @@ conn_tw.commit()
 if __name__ == "__main__":
     cur_tw.execute(
         """
+        SELECT N_ORCAMENTO
+        FROM FESTAS
+        WHERE TIPO = 'FORMATURA'
         """
     )
-    conn_tw.commit()
+    print(cur_tw.fetchall())

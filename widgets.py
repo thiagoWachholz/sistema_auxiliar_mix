@@ -441,6 +441,10 @@ class MyWindow(QMainWindow):
             self.w5 = MyWindow('Eventos', usuario=self.usuario)
             self.w5.w5_eventos()
 
+        def show_w7():
+            self.w7 = MyWindow('Relatórios', usuario=self.usuario)
+            self.w7.w7_relatorios()
+
         # Menu
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
@@ -460,6 +464,7 @@ class MyWindow(QMainWindow):
         acao_usuarios.triggered.connect(lambda: show_w3())
         self.button_produtos.clicked.connect(lambda: show_w4())
         self.button_eventos.clicked.connect(lambda: show_w5())
+        self.button_relatorios.clicked.connect(lambda: show_w7())
 
         # Layout da janela
         self.layout.addWidget(self.dev_name, 0, 1, 1, 1,
@@ -2727,6 +2732,136 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.layout.addWidget(self.w_label_total_consumo, 2, 0, 1, 12)
 
         self.resize(750, 750)
+        self.show()
+
+    def w7_relatorios(self):
+
+        def check_data(data):
+            try:
+                datetime.datetime.strptime(data, '%d/%m/%Y')
+                return True
+            except ValueError:
+                MyMessageBox('Data Inexistente!')
+                return False
+
+        def get_relatorio(data_inicio, data_fim, local, tipo, func):
+
+            if check_data(data_inicio.text()) and check_data(data_fim.text()):
+                data_iniciol = datetime.datetime.strptime(
+                    data_inicio.text(), "%d/%m/%Y"
+                )
+                data_fiml = datetime.datetime.strptime(
+                    data_fim.text(), "%d/%m/%Y"
+                )
+                if local.text() != '':
+                    locall = local.text()
+                else:
+                    locall = None
+                if tipo.text() != '':
+                    tipol = tipo.text()
+                else:
+                    tipol = None
+
+                if data_fiml >= data_iniciol:
+                    relatorio = func(
+                        data_iniciol, data_fiml, locall, tipol)
+                    webbrowser.open(relatorio)
+                else:
+                    MyMessageBox('Datas Incorretas')
+
+        def show_wstf(*args):
+            self.wstf = MyWindow('Tipos de Festa', usuario=self.usuario)
+            self.wstf.w_search_tipos_festa(*args)
+
+        def show_wslf(*args):
+            self.wslf = MyWindow('Locais de Festa', usuario=self.usuario)
+            self.wslf.w_search_locais_festa(*args)
+
+        def att_input(input_cod, input_text, function):
+            if input_cod.text() != '':
+                locais_festa = function()
+                codigo_local = int(input_cod.text())
+                if codigo_local in locais_festa:
+                    input_text.setText(locais_festa[codigo_local].nome)
+                else:
+                    input_text.setText('')
+            else:
+                input_text.setText('')
+
+        self.w7_label_data_inicial = QLabel('Data Início: ')
+        self.w7_input_data_inicial = QLineEdit()
+        self.w7_label_data_fim = QLabel('Data Fim: ')
+        self.w7_input_data_fim = QLineEdit()
+        self.w7_input_cod_local_festa = QLineEdit()
+        self.w7_label_local_festa = QLabel('')
+        self.w7_button_local_festa = MyButton('Local')
+        self.w7_input_cod_tipo_festa = QLineEdit()
+        self.w7_label_tipo_festa = QLabel('')
+        self.w7_button_tipo_festa = MyButton('Tipo')
+        self.w7_button_produtos_confirmados = MyButton('Produtos Confirmados')
+        self.w7_button_consumo_produto = MyButton('Consumo por Produto')
+        self.w7_button_festas_confirmadas = MyButton('Festas Confirmadas')
+
+        self.w7_int_validator = QIntValidator()
+        self.w7_input_data_inicial.setInputMask('00/00/0000')
+        self.w7_input_data_fim.setInputMask('00/00/0000')
+        self.w7_input_cod_local_festa.setPlaceholderText('Código Local')
+        self.w7_input_cod_tipo_festa.setPlaceholderText('Código Tipo')
+        self.w7_input_cod_local_festa.setValidator(self.w7_int_validator)
+        self.w7_input_cod_tipo_festa.setValidator(self.w7_int_validator)
+
+        self.w7_input_cod_local_festa.textChanged.connect(
+            lambda: att_input(self.w7_input_cod_local_festa,
+                              self.w7_label_local_festa,
+                              get_locais_festa)
+        )
+        self.w7_button_local_festa.clicked.connect(
+            lambda: show_wslf(self.w7_input_cod_local_festa)
+        )
+        self.w7_input_cod_tipo_festa.textChanged.connect(
+            lambda: att_input(self.w7_input_cod_tipo_festa,
+                              self.w7_label_tipo_festa,
+                              get_tipos_festa)
+        )
+        self.w7_button_tipo_festa.clicked.connect(
+            lambda: show_wstf(self.w7_input_cod_tipo_festa)
+        )
+        self.w7_button_produtos_confirmados.clicked.connect(
+            lambda: get_relatorio(self.w7_input_data_inicial,
+                                  self.w7_input_data_fim,
+                                  self.w7_label_local_festa,
+                                  self.w7_label_tipo_festa,
+                                  pdfs.get_relatorio_produtos_confirmados)
+        )
+        self.w7_button_consumo_produto.clicked.connect(
+            lambda: get_relatorio(self.w7_input_data_inicial,
+                                  self.w7_input_data_fim,
+                                  self.w7_label_local_festa,
+                                  self.w7_label_tipo_festa,
+                                  pdfs.get_relatorio_media_consumo)
+        )
+        self.w7_button_festas_confirmadas.clicked.connect(
+            lambda: get_relatorio(self.w7_input_data_inicial,
+                                  self.w7_input_data_fim,
+                                  self.w7_label_local_festa,
+                                  self.w7_label_tipo_festa,
+                                  pdfs.get_relatorio_festas_confirmadas)
+        )
+
+        self.layout.addWidget(self.w7_label_data_inicial, 0, 0, 1, 1)
+        self.layout.addWidget(self.w7_input_data_inicial, 0, 1, 1, 1)
+        self.layout.addWidget(self.w7_label_data_fim, 1, 0, 1, 1)
+        self.layout.addWidget(self.w7_input_data_fim, 1, 1, 1, 1)
+        self.layout.addWidget(self.w7_input_cod_local_festa, 2, 0, 1, 1)
+        self.layout.addWidget(self.w7_label_local_festa, 2, 1, 1, 1)
+        self.layout.addWidget(self.w7_button_local_festa, 2, 2, 1, 1)
+        self.layout.addWidget(self.w7_input_cod_tipo_festa, 3, 0, 1, 1)
+        self.layout.addWidget(self.w7_label_tipo_festa, 3, 1, 1, 1)
+        self.layout.addWidget(self.w7_button_tipo_festa, 3, 2, 1, 1)
+        self.layout.addWidget(self.w7_button_produtos_confirmados, 4, 0, 1, 3)
+        self.layout.addWidget(self.w7_button_consumo_produto, 5, 0, 1, 3)
+        self.layout.addWidget(self.w7_button_festas_confirmadas, 6, 0, 1, 3)
+
         self.show()
 
 

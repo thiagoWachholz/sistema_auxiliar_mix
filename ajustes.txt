@@ -1,7 +1,1 @@
-Relatórios
-VVVVVVVVVV
-Produtos confirmados > filtro de data
-Média de consumo por produto > filtro de data e tipo de festa
-Festas confirmadas > filtro de data
-Relação de tipos de festas > filtro de data
-Relação dos locais de festas > filtro de data
+Bug da quantidade ao marcar o checkbox de consignado!
