@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import webbrowser
 
+import pandas as pd
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIntValidator, QKeyEvent, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
@@ -579,6 +580,62 @@ class MyWindow(QMainWindow):
 
     def w4_produtos(self):
 
+        def check_arquivo(arquivo):
+
+            try:
+                pd.read_excel(arquivo)
+                return True
+            except ValueError:
+                MyMessageBox('Arquivo sem possibilidade de leitura')
+                return False
+
+        def change_consignados():
+
+            arquivo, _ = QFileDialog.getOpenFileName(
+                self, 'Abrir Arquivo', '', 'Todos os Arquivos (*.*)')
+
+            if check_arquivo(arquivo):
+                df = pd.read_excel(arquivo)
+
+                produtos = get_produtos()
+
+                total_produtos = 0
+
+                for produto in produtos:
+
+                    # Unidades
+                    linha = df[df['CÓDIGO(SYS/UN)'] ==
+                               produto]
+                    lista_linha = linha.to_dict(orient='records')
+                    if len(lista_linha) > 0:
+                        total_produtos += 1
+                        cur_tw.execute(
+                            f"""
+                            UPDATE PRODUTOS
+                            SET PRECO_CONSIGNADO = {
+                                lista_linha[0]['CONSIGNADO UN.']}
+                            WHERE CODIGO = '{lista_linha[0]['CÓDIGO(SYS/UN)']}'
+                            """
+                        )
+                        conn_tw.commit()
+
+                    # Caixas
+                    linha = df[df['CÓDIGO(SYS/CX)'] ==
+                               produto]
+                    lista_linha = linha.to_dict(orient='records')
+                    if len(lista_linha) > 0:
+                        total_produtos += 1
+                        cur_tw.execute(
+                            f"""
+                            UPDATE PRODUTOS
+                            SET PRECO_CONSIGNADO = {
+                                lista_linha[0]['CONSIGNADO CX.']}
+                            WHERE CODIGO = '{lista_linha[0]['CÓDIGO(SYS/CX)']}'
+                            """
+                        )
+                        conn_tw.commit()
+                print(total_produtos)
+
         def show_image(table):
             item = table.item(table.currentRow(), 1).text()
 
@@ -631,6 +688,8 @@ class MyWindow(QMainWindow):
         self.w4_button_image = MyButton('Ver Imagem')
         self.w4_button_change_image = MyButton('Trocar Imagem')
         self.w4_button_categoria_produto = MyButton('Categoria')
+        self.w4_button_atualizar_consignados = MyButton(
+            'Atualizar Consignados')
 
         # Ações dos Widgets
         self.w4_table_produtos.tabela_produtos(get_produtos())
@@ -646,6 +705,9 @@ class MyWindow(QMainWindow):
         self.w4_button_categoria_produto.clicked.connect(
             lambda: change_categoria(self.w4_table_produtos)
         )
+        self.w4_button_atualizar_consignados.clicked.connect(
+            lambda: change_consignados()
+        )
 
         # Layout da janela
         self.layout.addWidget(self.w4_label_pesquisa, 0, 0, 1, 1)
@@ -654,6 +716,7 @@ class MyWindow(QMainWindow):
         self.layout.addWidget(self.w4_button_image, 2, 0, 1, 1)
         self.layout.addWidget(self.w4_button_change_image, 2, 1, 1, 1)
         self.layout.addWidget(self.w4_button_categoria_produto, 2, 2, 1, 1)
+        self.layout.addWidget(self.w4_button_atualizar_consignados, 3, 0, 1, 3)
 
         self.showMaximized()
 
@@ -1609,11 +1672,6 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
                 input_text.setEnabled(False)
 
         def att_janela(festa, label):
-            # valor_total = 0
-            # produtos = festa.produtos
-            # for produto in festa.produtos:
-            #     total_produto = produtos[produto][3] * produtos[produto][4]
-            #     valor_total += total_produto
             label.setText(
                 (f'Valor Total: R${festa.total_orcamento:.2f}').replace(
                     '.', ',')
@@ -1632,7 +1690,7 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
 
         def fill_produto_inputs(input_cod, input_prod, input_qtd, input_valor,
                                 checkbox_consignado):
-            produtos = get_produtos()
+            produtos = get_produtos(codigo=f'{input_cod.text()}')
             if input_cod.text() in produtos:
                 produto = produtos[input_cod.text()]
                 input_prod.setText(f'{produto.nome} {produto.ref}')
@@ -2161,6 +2219,14 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             lambda: show_wse(self.w6_input_cod_recolhedor)
         )
         self.w6_input_cod_produto.textChanged.connect(
+            lambda: cod_produto_typed(self.w6_input_cod_produto,
+                                      self.w6_input_cod_produto,
+                                      self.w6_input_nome_produto,
+                                      self.w6_input_quantidade_produto,
+                                      self.w6_input_valor_produto,
+                                      self.w6_checkbox_consignado)
+        )
+        self.w6_checkbox_consignado.toggled.connect(
             lambda: cod_produto_typed(self.w6_input_cod_produto,
                                       self.w6_input_cod_produto,
                                       self.w6_input_nome_produto,

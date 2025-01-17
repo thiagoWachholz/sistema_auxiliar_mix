@@ -60,7 +60,7 @@ class Produto():
 
         cur_tw.execute(
             f"""
-            SELECT IMAGEM, CATEGORIA
+            SELECT IMAGEM, CATEGORIA, PRECO_CONSIGNADO
             FROM PRODUTOS
             WHERE CODIGO = '{self.codigo}'
             """
@@ -68,6 +68,7 @@ class Produto():
         select = cur_tw.fetchone()
         self.image = select[0]
         self.categoria = select[1]
+        self.preco_consignado = select[2]
 
     def change_categoria(self, nova_categoria):
         self.categoria = nova_categoria
@@ -543,13 +544,16 @@ def check_produtos():
     conn_tw.commit()
 
 
-def get_produtos(order_by='AC03CODI', nome=None, categoria=None):
+def get_produtos(order_by='AC03CODI', nome=None, categoria=None, codigo=None):
     produtos = {}
     select_base = """
         SELECT AC03CODI, AC03DESC, AC03REF, AN03PRC1
         FROM MC03PRO
         WHERE 1=1
         """
+    if codigo is not None:
+        plus_cod = f" AND AC03CODI = '{codigo}'"
+        select_base += plus_cod
     if nome is not None:
         like = f" AND LOWER(AC03DESC) LIKE '%{nome.lower()}%'"
         select_base = select_base + like
@@ -560,7 +564,7 @@ def get_produtos(order_by='AC03CODI', nome=None, categoria=None):
     select_mc = cur_mc.fetchall()
     cur_tw.execute(
         """
-        SELECT CODIGO, CATEGORIA, IMAGEM
+        SELECT CODIGO, CATEGORIA, IMAGEM, PRECO_CONSIGNADO
         FROM PRODUTOS
         """
     )
@@ -572,6 +576,7 @@ def get_produtos(order_by='AC03CODI', nome=None, categoria=None):
         if produto[0] in produtos:
             produtos[produto[0]].categoria = produto[1]
             produtos[produto[0]].image = produto[2]
+            produtos[produto[0]].preco_consignado = produto[3]
             if categoria is not None:
                 if produtos[produto[0]].categoria != categoria:
                     del produtos[produto[0]]

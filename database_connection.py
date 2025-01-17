@@ -149,12 +149,6 @@ conn_tw.commit()
 if __name__ == "__main__":
     cur_tw.execute(
         """
-        SELECT *
-        FROM FESTAS
-        WHERE DATA BETWEEN 2024-12-30 AND 2025-1-5
         """
     )
-    conn_tw.commit()
-    select = cur_tw.fetchall()
-    print(select)
     conn_tw.commit()
