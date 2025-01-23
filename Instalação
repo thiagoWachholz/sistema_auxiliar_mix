@@ -1,0 +1,9 @@
+Para garantir a funcionalidade do software:
+
+em um arquivo json nomeado database_path.json
+armazenado em uma variavel do tipo lista
+deve-se informar o caminho do banco de dados da MC Sistemas no index 0
+deve-se criar e informar o caminho do banco de dados próprio do sistema no index 1
+
+deve existir uma pasta chamada imagens e nela deve haver de preferência uma imagem
+genérica em jpg nomeada bebida e uma imagem em png do logo da Mix Bebidas

@@ -1,9 +1,7 @@
 import datetime
 import os
 
-from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
-
-caminho_images = os.getcwd() + '\\images'
+from database_connection import conn_mc, conn_tw, cur_mc, cur_tw, images_path
 
 
 class Usuario():
@@ -34,7 +32,7 @@ class Usuario():
 
 class Produto():
     def __init__(self, codigo=None, nome=None, ref=None, preco=None,
-                 image=caminho_images+'\\bebida.jpg',
+                 image=images_path+'\\bebida.jpg',
                  quantidade=1, categoria='Não Definido') -> None:
         self.codigo = codigo
         self.nome = nome
@@ -66,7 +64,10 @@ class Produto():
             """
         )
         select = cur_tw.fetchone()
-        self.image = select[0]
+        if os.path.exists(select[0]):
+            self.image = select[0]
+        else:
+            self.image = images_path+'\\bebida.jpg'
         self.categoria = select[1]
         self.preco_consignado = select[2]
 
@@ -575,7 +576,10 @@ def get_produtos(order_by='AC03CODI', nome=None, categoria=None, codigo=None):
     for produto in select_tw:
         if produto[0] in produtos:
             produtos[produto[0]].categoria = produto[1]
-            produtos[produto[0]].image = produto[2]
+            if os.path.exists(produto[2]):
+                produtos[produto[0]].image = produto[2]
+            else:
+                produtos[produto[0]].image = images_path + '\\bebida.jpg'
             produtos[produto[0]].preco_consignado = produto[3]
             if categoria is not None:
                 if produtos[produto[0]].categoria != categoria:
@@ -596,11 +600,13 @@ def get_categorias():
     return categorias
 
 
-def get_entregadores():
+def get_entregadores(like=''):
     entregadores = {}
     cur_tw.execute(
-        """
+        f"""
         SELECT ID, NOME, TELEFONE FROM ENTREGADORES
+        WHERE 1 = 1
+        AND LOWER(NOME) LIKE '%{like}%'
         """
     )
     select = cur_tw.fetchall()
@@ -609,11 +615,13 @@ def get_entregadores():
     return entregadores
 
 
-def get_tipos_festa():
+def get_tipos_festa(like=''):
     tipos_festa = {}
     cur_tw.execute(
-        """
+        f"""
         SELECT ID, NOME FROM TIPO_FESTA
+        WHERE 1 = 1
+        AND LOWER(NOME) LIKE '%{like}%'
         """
     )
     select = cur_tw.fetchall()
@@ -622,12 +630,14 @@ def get_tipos_festa():
     return tipos_festa
 
 
-def get_locais_festa():
+def get_locais_festa(like=''):
     locais_festa = {}
     cur_tw.execute(
-        """
+        f"""
         SELECT ID, NOME, CONTATO, LOGRADOURO, NUMERO, BAIRRO, CIDADE, CEP
         FROM LOCAL_FESTA
+        WHERE 1 = 1
+        AND LOWER(NOME) LIKE '%{like}%'
         """
     )
     select = cur_tw.fetchall()

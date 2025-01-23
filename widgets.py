@@ -1699,7 +1699,8 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
             if input_cod.text() in produtos:
                 produto = produtos[input_cod.text()]
                 input_prod.setText(f'{produto.nome} {produto.ref}')
-                input_qtd.setText('1')
+                if input_qtd.text() == '':
+                    input_qtd.setText('1')
                 if checkbox_consignado.isChecked():
                     valor = f'{produto.preco_consignado:.2f}'
                     input_valor.setText(valor.replace('.', ','))
@@ -2616,6 +2617,11 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.wslf_button_cancelar = MyButton('Cancelar')
 
         self.wslf_table_locais_festa.tabela_locais_festa(get_locais_festa())
+        self.wslf_input_pesquisa.textChanged.connect(
+            lambda: self.wslf_table_locais_festa.tabela_locais_festa(
+                get_locais_festa(like=self.wslf_input_pesquisa.text())
+            )
+        )
         self.wslf_button_confirmar.clicked.connect(
             lambda: choose_local(self.wslf_table_locais_festa,
                                  input_cod)
@@ -2649,6 +2655,10 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.wstf_button_cancelar = MyButton('Cancelar')
 
         self.wstf_table_tipos_festa.tabela_tipos_festa(get_tipos_festa())
+        self.wstf_input_pesquisa.textChanged.connect(
+            lambda: self.wstf_table_tipos_festa.tabela_tipos_festa(
+                get_tipos_festa(like=self.wstf_input_pesquisa.text())
+            ))
         self.wstf_button_confirmar.clicked.connect(
             lambda: choose_tipo(self.wstf_table_tipos_festa,
                                 input_cod)
@@ -2682,6 +2692,11 @@ Deseja remover o tipo de festa {nome_tipo_festa}?
         self.wse_button_cancelar = MyButton('Cancelar')
 
         self.wse_table_entregadores.tabela_entregadores(get_entregadores())
+        self.wse_input_pesquisa.textChanged.connect(
+            lambda: self.wse_table_entregadores.tabela_entregadores(
+                get_entregadores(like=self.wse_input_pesquisa.text())
+            )
+        )
         self.wse_button_confirmar.clicked.connect(
             lambda: choose_entregador(self.wse_table_entregadores,
                                       input_cod)

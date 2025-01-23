@@ -1,5 +1,4 @@
 # type:ignore
-# import datetime
 import json
 import os
 import sqlite3
@@ -18,6 +17,7 @@ else:
         json.dump(database_name, arquivo)
 database_name_mc = database_name[0]
 database_name_tw = database_name[1]
+images_path = database_name[2]
 
 username = "SYSDBA"
 password = "masterkey"
