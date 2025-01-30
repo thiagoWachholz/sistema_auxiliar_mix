@@ -8,3 +8,11 @@ QPushButton {
     color: #FFFFFF;
     padding: 8px;
 }
+
+QLineEdit {
+    background-color: #001320
+}
+
+QLineEdit:focus {
+    background-color: #002843
+}

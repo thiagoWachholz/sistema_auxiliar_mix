@@ -1,5 +1,7 @@
 # type:ignore
 import datetime
+import os
+import shutil
 import sqlite3
 import sys
 import webbrowser
@@ -14,10 +16,10 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QWidget)
 
 import pdfs
-from database_connection import conn_mc, conn_tw, cur_mc, cur_tw
+from database_connection import conn_mc, conn_tw, cur_mc, cur_tw, images_path
 from objects import (Categoria, Cliente, Entregador, Festa, LocalFesta,
-                     TipoFesta, Usuario, caminho_images, get_categorias,
-                     get_clientes, get_entregadores, get_festas_confirmadas,
+                     TipoFesta, Usuario, get_categorias, get_clientes,
+                     get_entregadores, get_festas_confirmadas,
                      get_locais_festa, get_produtos, get_tipos_festa,
                      get_usuarios)
 
@@ -89,7 +91,7 @@ class MyTable(QTableWidget):
                 preco_consignado = format(lista[i].preco_consignado, '.2f')
                 item6 = QTableWidgetItem(str(preco_consignado))
                 item6.setFlags(item6.flags() & ~Qt.ItemIsEditable)
-                if lista[i].image == caminho_images+'\\bebida.jpg':
+                if lista[i].image == images_path+'\\bebida.jpg':
                     item7 = QTableWidgetItem('Não')
                     item7.setBackground(QColor(105, 45, 33))
                 else:
@@ -654,20 +656,23 @@ class MyWindow(QMainWindow):
         def att_w4_table(pesquisa, table):
             table.tabela_produtos(get_produtos(nome=pesquisa))
 
-        def change_image(table):
+        def change_image(table: MyTable):
             item = table.item(table.currentRow(), 0).text()
             caminho_arquivo, _ = QFileDialog.getOpenFileName(
                 self, "Selecionar Arquivo")
+            nome_arquivo = os.path.basename(caminho_arquivo)
+            shutil.copy(caminho_arquivo, images_path)
             if caminho_arquivo:
                 cur_tw.execute(
                     f"""
                     UPDATE PRODUTOS
-                    SET IMAGEM = '{caminho_arquivo}'
+                    SET IMAGEM = '{nome_arquivo}'
                     WHERE CODIGO = '{item}'
                     """
                 )
                 conn_tw.commit()
                 MyMessageBox('Imagem Alterada!')
+            table.tabela_produtos(get_produtos())
 
         def show_categorias():
             self.w_categorias = MyWindow('Categorias')
@@ -725,7 +730,7 @@ class MyWindow(QMainWindow):
 
         self.showMaximized()
 
-    def w4_image(self, caminho_imagem=caminho_images+'\\bebida.jpg'):
+    def w4_image(self, caminho_imagem=images_path+'\\bebida.jpg'):
 
         self.w4_label_image = QLabel()
         pixmap = QPixmap(caminho_imagem)

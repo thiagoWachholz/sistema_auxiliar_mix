@@ -64,8 +64,8 @@ class Produto():
             """
         )
         select = cur_tw.fetchone()
-        if os.path.exists(select[0]):
-            self.image = select[0]
+        if os.path.exists(images_path+"\\"+select[0]):
+            self.image = images_path+"\\"+select[0]
         else:
             self.image = images_path+'\\bebida.jpg'
         self.categoria = select[1]
@@ -576,8 +576,8 @@ def get_produtos(order_by='AC03CODI', nome=None, categoria=None, codigo=None):
     for produto in select_tw:
         if produto[0] in produtos:
             produtos[produto[0]].categoria = produto[1]
-            if os.path.exists(produto[2]):
-                produtos[produto[0]].image = produto[2]
+            if os.path.exists(images_path+"\\"+produto[2]):
+                produtos[produto[0]].image = images_path+"\\"+produto[2]
             else:
                 produtos[produto[0]].image = images_path + '\\bebida.jpg'
             produtos[produto[0]].preco_consignado = produto[3]
